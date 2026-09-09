@@ -104,11 +104,11 @@ export function isMainModule(moduleUrl) {
   }
 }
 
-/** Windows cannot spawn npm-installed `.cmd` shims by their bare command name. */
+/** Use Vite's JS entry on Windows so no shell interpolation is needed. */
 export function resolveCommand(command, platform = process.platform) {
   return platform === "win32" && command === "vite"
-    ? join(projectRoot(), "node_modules", ".bin", "vite.cmd")
-    : command;
+    ? [process.execPath, join(projectRoot(), "node_modules", "vite", "bin", "vite.js")]
+    : [command];
 }
 
 function main(argv) {
@@ -118,11 +118,10 @@ function main(argv) {
     process.exit(2);
   }
   const env = mergeAppEnv(readAppEnv(projectRoot()), process.env);
-  const resolvedCommand = resolveCommand(command);
-  const child = spawn(resolvedCommand, args, {
+  const [resolvedCommand, ...commandArgs] = resolveCommand(command);
+  const child = spawn(resolvedCommand, [...commandArgs, ...args], {
     stdio: "inherit",
     env,
-    shell: process.platform === "win32" && command === "vite",
   });
   // The dev server is long-running and is stopped by signalling this wrapper.
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {

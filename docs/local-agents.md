@@ -35,6 +35,10 @@ Operator diagnostics should use `OperatorEvent` values and remain bounded.
 Capture only app-relevant actions and runtime failures; do not persist the
 trace or include personal data. Findings should suggest investigation rather
 than issue commands back into the app.
+The canonical plan lives in the docs directory, especially
+`docs/checkpoints/` and `docs/local-agents.md`. Do not keep a separate live
+plan window in the app when the repo already records the work in docs; the
+source of truth stays doc-first and the app remains focused on the simulation.
 
 Authentication, connector data, P2P rooms, and GitHub Actions are optional
 integration layers. They must not become prerequisites for local agent

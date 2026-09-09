@@ -8,6 +8,7 @@ import {
   triageSimulation,
 } from "./index.ts";
 import { SimEngine } from "../../sim/engine.ts";
+import { getLocalAgent, LOCAL_AGENTS, LOCAL_SKILLS, triageSimulation } from "./index.ts";
 import type { Metrics } from "../../sim/types.ts";
 
 function metrics(overrides: Partial<Metrics> = {}): Metrics {
@@ -95,12 +96,11 @@ test("reports stable fields and active feedback without inventing warnings", () 
   );
 });
 
-test("reseed creates a fresh field unless a fixed seed is requested", () => {
+test("reseeds with fresh patterns while fixed seeds remain deterministic", () => {
   const a = new SimEngine();
   const b = new SimEngine();
   a.allocate(64, 48);
   b.allocate(64, 48);
-
   a.seed("homeostat");
   b.seed("homeostat");
   assert.notDeepEqual(Array.from(a.alive), Array.from(b.alive));
@@ -123,7 +123,7 @@ test("clear and paint recalculate live metrics instead of showing stale populati
   const cleared = engine.snapshot();
   assert.equal(cleared.population, 0);
   assert.equal(cleared.density, 0);
-  assert.ok(Number.isFinite(cleared.viability));
+  assert.equal(cleared.viability, 0);
 
   engine.seed("homeostat");
   engine.paint(5, 5, "erase", 2);

@@ -1,4 +1,4 @@
-import type { Genome } from "./types";
+import type { Genome } from "./types.ts";
 
 export function classicGenome(): Genome {
   const birth = Array.from({ length: 9 }, () => false);

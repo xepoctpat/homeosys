@@ -308,25 +308,28 @@ export class SimEngine {
     }
     const density = population / n;
     const p = Math.max(0.0001, Math.min(0.9999, density));
-    const entropy = -(p * Math.log2(p) + (1 - p) * Math.log2(1 - p));
-    const meanEnergy = energy / n;
+    const entropy = population === 0 ? 0 : -(p * Math.log2(p) + (1 - p) * Math.log2(1 - p));
+    const meanEnergy = population === 0 ? 0 : energy / n;
+    const meanHeat = population === 0 ? 0 : heat / n;
     const stab = 1;
     this.lastPop = population;
     this.lastReg = regulators;
     this.lastEntropy = entropy;
-    this.lastHeat = heat / n;
+    this.lastHeat = meanHeat;
     this.lastEnergy = meanEnergy;
     this.lastViability =
-      0.28 *
-        (1 -
-          Math.min(
-            1,
-            Math.abs(density - this.setpoint) / Math.max(0.08, this.setpoint),
-          )) +
-      0.24 * entropy +
-      0.2 * (1 - stab) +
-      0.16 * meanEnergy +
-      0.12 * (population > 0 ? 1 : 0);
+      population === 0
+        ? 0
+        : 0.28 *
+            (1 -
+              Math.min(
+                1,
+                Math.abs(density - this.setpoint) / Math.max(0.08, this.setpoint),
+              )) +
+            0.24 * entropy +
+            0.2 * (1 - stab) +
+            0.16 * meanEnergy +
+            0.12 * (population > 0 ? 1 : 0);
   }
 
   private paintNoise(density: number, scale: number): void {
@@ -390,6 +393,10 @@ export class SimEngine {
     this.alive.fill(0);
     this.kind.fill(0);
     this.tenure.fill(0);
+    this.heat.fill(0);
+    this.energy.fill(0);
+    this.nextHeat.fill(0);
+    this.nextEnergy.fill(0);
     this.shown.fill(0);
     this.generation = 0;
     this.pulses = [];

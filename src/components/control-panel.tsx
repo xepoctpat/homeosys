@@ -13,6 +13,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { PRESETS, type PaintMode, type PresetId, type SimSettings } from "@/sim/types";
@@ -83,8 +84,8 @@ function RangeInput({
 }) {
   const progress = ((value - min) / Math.max(0.0001, max - min)) * 100;
   return (
-    <input
-      type="range"
+    <Slider
+      aria-label={label}
       min={min}
       max={max}
       step={step}
