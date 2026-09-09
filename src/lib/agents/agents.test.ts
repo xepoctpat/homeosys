@@ -8,7 +8,6 @@ import {
   triageSimulation,
 } from "./index.ts";
 import { SimEngine } from "../../sim/engine.ts";
-import { getLocalAgent, LOCAL_AGENTS, LOCAL_SKILLS, triageSimulation } from "./index.ts";
 import type { Metrics } from "../../sim/types.ts";
 
 function metrics(overrides: Partial<Metrics> = {}): Metrics {

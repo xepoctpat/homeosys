@@ -89,9 +89,10 @@ function RangeInput({
       min={min}
       max={max}
       step={step}
-      value={value}
-      aria-label={label}
-      onChange={(e) => onChange(Number(e.target.value))}
+      value={[value]}
+      onValueChange={([next]) => {
+        if (next !== undefined) onChange(next);
+      }}
       style={{ "--range-progress": `${progress}%` } as CSSProperties}
       className="homeostat-range h-9 w-full cursor-pointer appearance-none bg-transparent"
     />
