@@ -30,6 +30,62 @@ The current implementation can support research on feedback-mediated viability
 and ultrastability. It should not yet claim cognition, consciousness,
 biological equivalence, or strict autopoiesis.
 
+## Operating model: broad platform, narrow evidence
+
+Homeostat has two simultaneous scopes:
+
+- The **application scope** stays broad. It can expose homeostasis,
+  ultrastability, viability, distributed control, autopoiesis, and complex
+  adaptive behavior as an evolving research platform.
+- The **study scope** stays narrow. Each experiment activates a defined subset
+  of mechanisms, locks the rest, and changes one causal factor at a time.
+
+Every capability should be labeled as one of:
+
+1. **Implemented mechanism** — behavior currently present in the simulation.
+2. **Current experimental target** — the mechanism being tested now.
+3. **Future research hypothesis** — a capability requiring new state or
+   observables before it can be evaluated.
+4. **Conceptual inspiration** — theory that guides design but is not evidence.
+
+The governing rule is **broad in architecture, narrow in evidence**. Exploratory
+play can remain open-ended, but a controlled study must record its condition,
+seed, disturbance, viable region, generation limit, and metrics.
+
+### First paper-sized study
+
+The initial controlled comparison should use one canonical cellular model and
+one disturbance family:
+
+| Condition | Fixed rules | Feedback | Slow adaptation |
+|---|---:|---:|---:|
+| Baseline | yes | no | no |
+| Homeostatic | yes | yes | no |
+| Ultrastable | adaptive | yes | yes |
+
+Hold grid dimensions, initial patterns, random seeds, boundaries, update order,
+disturbance schedule, generation limit, and measurement interval constant.
+Predeclare the viable region `K` and report distributions across runs rather
+than selecting the most compelling trajectory.
+
+### UX guidance
+
+The interface should support exploration without presenting exploration as a
+controlled experiment:
+
+- The normal controls remain available for discovery and play.
+- The Run surface should identify the current study question and explain the
+  three-condition comparison.
+- World controls should make clear that they define the disturbance or
+  environment; changing them does not redefine the loop configuration.
+- Loop controls should make clear which controller mechanism is being changed
+  and that changes affect the current world immediately.
+- Metrics should be described as observations, not proof of life, cognition, or
+  autopoiesis.
+- A future Research mode can lock seeds, name conditions, repeat runs, export
+  metadata, and replay a disturbance schedule without removing the exploratory
+  mode.
+
 ## Formal model
 
 Represent a run as:
@@ -177,4 +233,3 @@ resilience = viability time
   https://fbsbook.org/
 - John Holland, “Complex Adaptive Systems” (1992):  
   https://www.jstor.org/stable/20025416
-

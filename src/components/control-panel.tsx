@@ -127,6 +127,29 @@ function ToggleRow({
   );
 }
 
+function GuidanceCard({
+  eyebrow,
+  title,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-lg border border-border bg-raised/60 px-3.5 py-3" aria-label={title}>
+      <div className="mb-1 flex items-center gap-2">
+        <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-accent">
+          {eyebrow}
+        </span>
+        <span className="h-px flex-1 bg-border" />
+      </div>
+      <h2 className="text-sm font-medium text-fg">{title}</h2>
+      <div className="mt-2 text-xs leading-relaxed text-subtle">{children}</div>
+    </section>
+  );
+}
+
 const TABS: { id: TabId; label: string }[] = [
   { id: "run", label: "Run" },
   { id: "paint", label: "Paint" },
@@ -219,6 +242,11 @@ export function ControlPanel(props: ControlPanelProps) {
       <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain no-scrollbar px-5 pb-6">
         {tab === "run" ? (
           <div className="space-y-5">
+            <GuidanceCard eyebrow="Current study" title="Feedback under disturbance">
+              Compare three conditions over the same world: fixed rules, homeostatic
+              feedback, and ultrastable adaptation. Explore freely here; a controlled
+              study should keep the seed, disturbance, and generation limit fixed.
+            </GuidanceCard>
             <Row
               label="Speed"
               value={`${speed.toFixed(0)} /s`}
@@ -291,6 +319,11 @@ export function ControlPanel(props: ControlPanelProps) {
 
         {tab === "world" ? (
           <div className="space-y-5">
+            <GuidanceCard eyebrow="Environment" title="Set the disturbance">
+              World presets and climate controls shape the field the loops must
+              respond to. They preserve your loop configuration, so you can compare
+              environmental conditions without silently changing the controller.
+            </GuidanceCard>
             <div>
               <div className="flex flex-wrap gap-2">
                 {PRESETS.map((p) => {
@@ -424,6 +457,11 @@ export function ControlPanel(props: ControlPanelProps) {
 
         {tab === "loops" ? (
           <div className="space-y-5">
+            <GuidanceCard eyebrow="Controller" title="Change the mechanism">
+              These switches and sliders alter how the current world regulates
+              itself. The effect is applied immediately; pause to inspect one
+              change, or run to observe its response over time.
+            </GuidanceCard>
             <ToggleRow
               label="Self-regulation"
               description="The field watches itself and acts when things drift."
