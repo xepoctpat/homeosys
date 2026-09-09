@@ -5,6 +5,12 @@ import { MetricsBar } from "@/components/metrics-bar";
 import { FieldAudio } from "@/sim/audio";
 import { SimEngine } from "@/sim/engine";
 import {
+  observeOperator,
+  type AgentResult,
+  type OperatorAction,
+  type OperatorEvent,
+} from "@/lib/agents";
+import {
   DEFAULT_SETTINGS,
   PRESETS,
   type Metrics,
@@ -14,7 +20,6 @@ import {
 } from "@/sim/types";
 
 const STORAGE_KEY = "homeostat.v1";
-
 interface Persisted {
   speed: number;
   settings: SimSettings;
@@ -36,6 +41,20 @@ function loadPersisted(): Partial<Persisted> {
   }
 }
 
+function worldSettingsForPreset(current: SimSettings, preset: PresetId): SimSettings {
+  const found = PRESETS.find((item) => item.id === preset);
+  return {
+    ...current,
+    environment: found?.settings.environment ?? DEFAULT_SETTINGS.environment,
+    climate: found?.settings.climate ?? DEFAULT_SETTINGS.climate,
+    seasonRate: found?.settings.seasonRate ?? DEFAULT_SETTINGS.seasonRate,
+    seasonAmp: found?.settings.seasonAmp ?? DEFAULT_SETTINGS.seasonAmp,
+    energyRichness: found?.settings.energyRichness ?? DEFAULT_SETTINGS.energyRichness,
+    metabolicHeat: found?.settings.metabolicHeat ?? DEFAULT_SETTINGS.metabolicHeat,
+    noise: found?.settings.noise ?? DEFAULT_SETTINGS.noise,
+  };
+}
+
 export function AppShell() {
   const engineRef = useRef<SimEngine | null>(null);
   if (!engineRef.current) engineRef.current = new SimEngine();
@@ -55,6 +74,45 @@ export function AppShell() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [layoutNonce, setLayoutNonce] = useState(0);
   const [hydrated, setHydrated] = useState(false);
+  const [operatorResult, setOperatorResult] = useState<AgentResult>(() =>
+    observeOperator({ kind: "operator", events: [] }),
+  );
+  const operatorEventsRef = useRef<OperatorEvent[]>([]);
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+
+  const recordOperatorEvent = useCallback((event: Omit<OperatorEvent, "timestamp">) => {
+    const next = [...operatorEventsRef.current, { ...event, timestamp: Date.now() }].slice(-24);
+    operatorEventsRef.current = next;
+    setOperatorResult(observeOperator({ kind: "operator", events: next }));
+  }, []);
+
+  const recordAction = useCallback(
+    (action: OperatorAction, detail?: string) =>
+      recordOperatorEvent({ kind: "action", action, detail }),
+    [recordOperatorEvent],
+  );
+
+  useEffect(() => {
+    const onError = (event: ErrorEvent) => {
+      recordOperatorEvent({
+        kind: "runtime-error",
+        detail: event.message || "Uncaught runtime error",
+      });
+    };
+    const onRejection = (event: PromiseRejectionEvent) => {
+      recordOperatorEvent({
+        kind: "runtime-error",
+        detail: event.reason instanceof Error ? event.reason.message : String(event.reason),
+      });
+    };
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onRejection);
+    };
+  }, [recordOperatorEvent]);
 
   useEffect(() => {
     const saved = loadPersisted();
@@ -113,43 +171,64 @@ export function AppShell() {
     }
   }, [engine]);
 
+  const onSettings = useCallback(
+    (partial: Partial<SimSettings>) => {
+      recordAction("change-setting", Object.keys(partial).join(", "));
+      const next = { ...settingsRef.current, ...partial };
+      settingsRef.current = next;
+      engine.applySettings(next);
+      setSettings(next);
+      if (!running) {
+        engine.step();
+        engine.advanceDisplay(0.08, false);
+        onMetrics();
+      }
+    },
+    [engine, onMetrics, recordAction, running],
+  );
+
   const onUnlock = useCallback(() => {
     audioRef.current?.unlock();
   }, []);
 
   const toggleRun = useCallback(() => {
     audioRef.current?.unlock();
+    recordAction(running ? "pause" : "run");
     setRunning((r) => !r);
-  }, []);
+  }, [recordAction, running]);
 
   const stepOnce = useCallback(() => {
     audioRef.current?.unlock();
+    recordAction("step");
     setRunning(false);
     engine.step();
     engine.advanceDisplay(0.08, false);
     onMetrics();
     audioRef.current?.blip("step");
-  }, [engine, onMetrics]);
+  }, [engine, onMetrics, recordAction]);
 
   const applyPreset = useCallback(
     (id: PresetId) => {
-      const found = PRESETS.find((x) => x.id === id);
-      const next = { ...DEFAULT_SETTINGS, ...(found?.settings ?? {}) };
+      const next = worldSettingsForPreset(settingsRef.current, id);
+      settingsRef.current = next;
       setPreset(id);
+      recordAction("reseed", id);
       setSettings(next);
       engine.applySettings(next);
       engine.seed(id);
       onMetrics();
     },
-    [engine, onMetrics],
+    [engine, onMetrics, recordAction],
   );
 
   const clear = useCallback(() => {
+    recordAction("clear");
     engine.clear();
     onMetrics();
-  }, [engine, onMetrics]);
+  }, [engine, onMetrics, recordAction]);
 
   const refit = useCallback(() => {
+    recordAction("fit");
     engine.cols = 0;
     setLayoutNonce((n) => n + 1);
   }, [engine]);
@@ -200,6 +279,9 @@ export function AppShell() {
           <div className="font-mono text-sm tabular-nums text-accent">
             {running ? "running" : "paused"}
           </div>
+          <div className="max-w-56 truncate text-xs text-subtle" title={operatorResult.summary}>
+            {operatorResult.findings[0]?.title ?? "observer: clear"}
+          </div>
         </div>
       </header>
 
@@ -238,13 +320,31 @@ export function AppShell() {
             preset={preset}
             onToggleRun={toggleRun}
             onStep={stepOnce}
-            onSpeed={setSpeed}
-            onSettings={(partial) => setSettings((s) => ({ ...s, ...partial }))}
-            onPaintMode={setPaintMode}
-            onBrush={setBrush}
-            onShowHeat={setShowHeat}
-            onShowEnergy={setShowEnergy}
-            onMuted={setMuted}
+            onSpeed={(value) => {
+              recordAction("change-setting", "speed");
+              setSpeed(value);
+            }}
+            onSettings={onSettings}
+            onPaintMode={(mode) => {
+              recordAction("change-setting", `paint mode: ${mode}`);
+              setPaintMode(mode);
+            }}
+            onBrush={(value) => {
+              recordAction("change-setting", "brush");
+              setBrush(value);
+            }}
+            onShowHeat={(value) => {
+              recordAction("change-display", "heat overlay");
+              setShowHeat(value);
+            }}
+            onShowEnergy={(value) => {
+              recordAction("change-display", "energy overlay");
+              setShowEnergy(value);
+            }}
+            onMuted={(value) => {
+              recordAction("change-display", value ? "mute" : "unmute");
+              setMuted(value);
+            }}
             onSeed={applyPreset}
             onClear={clear}
             onRefit={refit}

@@ -17,6 +17,12 @@ first agent, `simulation-triage`, can report collapse, sparse or crowded
 conditions, low energy, and active feedback loops. Its suggested actions are
 descriptive rather than automatic so the game remains player-directed.
 
+The `operator-observer` agent is a separate read-only diagnostic layer. It
+receives a bounded local trace of UI actions and runtime errors, then reports
+possible control friction or app failures. It never receives a `SimEngine`
+reference and cannot step, seed, paint, clear, or change simulation settings.
+The trace is held in memory for the current page session only.
+
 ## Extension rules
 
 Add a local skill when it has a stable input/output contract and can run
@@ -24,6 +30,11 @@ without network access. Add an agent to `LOCAL_AGENTS` only after its behavior
 is deterministic and covered by a focused test. Keep agent code separate from
 the render loop and `SimEngine`; agents may observe snapshots but must not
 mutate simulation state.
+
+Operator diagnostics should use `OperatorEvent` values and remain bounded.
+Capture only app-relevant actions and runtime failures; do not persist the
+trace or include personal data. Findings should suggest investigation rather
+than issue commands back into the app.
 
 Authentication, connector data, P2P rooms, and GitHub Actions are optional
 integration layers. They must not become prerequisites for local agent
