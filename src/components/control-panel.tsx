@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import {
   Droplets,
   Eraser,
@@ -82,15 +82,18 @@ function RangeInput({
   label: string;
   onChange: (v: number) => void;
 }) {
+  const progress = ((value - min) / Math.max(0.0001, max - min)) * 100;
   return (
     <Slider
       aria-label={label}
       min={min}
       max={max}
       step={step}
-      value={[value]}
-      onValueChange={([next]) => onChange(next)}
-      className="h-9 w-full"
+      value={value}
+      aria-label={label}
+      onChange={(e) => onChange(Number(e.target.value))}
+      style={{ "--range-progress": `${progress}%` } as CSSProperties}
+      className="homeostat-range h-9 w-full cursor-pointer appearance-none bg-transparent"
     />
   );
 }
@@ -269,12 +272,15 @@ export function ControlPanel(props: ControlPanelProps) {
               })}
             </div>
             <p className="text-xs leading-relaxed text-subtle">{PAINT_HINT[paintMode]}</p>
-            <Row
-              label="Brush size"
-              value={String(brush)}
-              hint="How wide each stroke is, in cells."
-            >
-              <RangeInput min={0} max={6} step={1} value={brush} label="Brush size" onChange={onBrush} />
+            <Row label="Brush size" value={String(brush)} hint="How wide each stroke is, in cells.">
+              <RangeInput
+                min={0}
+                max={6}
+                step={1}
+                value={brush}
+                label="Brush size"
+                onChange={onBrush}
+              />
             </Row>
             <p className="text-xs leading-relaxed text-subtle">
               Drag on the field to draw. Pause first if you want a still canvas.

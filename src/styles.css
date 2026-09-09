@@ -12,6 +12,8 @@
   --color-border: #23262e;
   --color-heat-cold: #1a2830;
   --color-heat-hot: #3a2a1c;
+  --color-energy-low: #111b24;
+  --color-energy-high: #c3a85d;
   --color-danger: #b07070;
   --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -53,8 +55,57 @@
     cursor: pointer;
   }
 
-  input[type="range"] {
-    accent-color: var(--color-accent);
+  .homeostat-range {
+    --range-track: color-mix(in srgb, var(--color-raised) 86%, white 14%);
+    --range-fill: var(--color-accent);
+    accent-color: var(--range-fill);
+  }
+
+  .homeostat-range::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 999px;
+    background: linear-gradient(
+      to right,
+      var(--range-fill) 0 var(--range-progress),
+      var(--range-track) var(--range-progress) 100%
+    );
+  }
+
+  .homeostat-range::-webkit-slider-thumb {
+    width: 16px;
+    height: 16px;
+    margin-top: -6px;
+    appearance: none;
+    border: 2px solid var(--color-bg);
+    border-radius: 999px;
+    background: var(--range-fill);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--range-fill) 35%, transparent);
+  }
+
+  .homeostat-range::-moz-range-track {
+    height: 4px;
+    border-radius: 999px;
+    background: var(--range-track);
+  }
+
+  .homeostat-range::-moz-range-progress {
+    height: 4px;
+    border-radius: 999px;
+    background: var(--range-fill);
+  }
+
+  .homeostat-range::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--color-bg);
+    border-radius: 999px;
+    background: var(--range-fill);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--range-fill) 35%, transparent);
+  }
+
+  .homeostat-range:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
   }
 
   * {

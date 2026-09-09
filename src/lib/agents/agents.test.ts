@@ -1,5 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import {
+  getLocalAgent,
+  LOCAL_AGENTS,
+  LOCAL_SKILLS,
+  observeOperator,
+  triageSimulation,
+} from "./index.ts";
 import { SimEngine } from "../../sim/engine.ts";
 import { getLocalAgent, LOCAL_AGENTS, LOCAL_SKILLS, triageSimulation } from "./index.ts";
 import type { Metrics } from "../../sim/types.ts";
@@ -26,9 +33,43 @@ function metrics(overrides: Partial<Metrics> = {}): Metrics {
 }
 
 test("registers the local triage agent and its skill", () => {
-  assert.deepEqual(LOCAL_SKILLS.map((skill) => skill.id), ["simulation-observer"]);
-  assert.deepEqual(LOCAL_AGENTS.map((agent) => agent.id), ["simulation-triage"]);
+  assert.deepEqual(
+    LOCAL_SKILLS.map((skill) => skill.id),
+    ["simulation-observer", "operator-observation"],
+  );
+  assert.deepEqual(
+    LOCAL_AGENTS.map((agent) => agent.id),
+    ["simulation-triage", "operator-observer"],
+  );
   assert.equal(getLocalAgent("simulation-triage").skills[0], "simulation-observer");
+});
+
+test("operator observer reports runtime errors without touching simulation state", () => {
+  const result = observeOperator({
+    kind: "operator",
+    events: [
+      { kind: "action", action: "step", timestamp: 1 },
+      { kind: "runtime-error", detail: "canvas failed", timestamp: 2 },
+    ],
+  });
+
+  assert.equal(result.agentId, "operator-observer");
+  assert.equal(result.findings[0]?.code, "runtime-error");
+  assert.equal(result.findings[0]?.severity, "critical");
+});
+
+test("operator observer identifies repeated controls as possible UI friction", () => {
+  const result = observeOperator({
+    kind: "operator",
+    events: [1, 2, 3, 4].map((timestamp) => ({
+      kind: "action" as const,
+      action: "reseed" as const,
+      timestamp,
+    })),
+  });
+
+  assert.equal(result.findings[0]?.code, "repeated-action");
+  assert.equal(result.findings[0]?.severity, "warning");
 });
 
 test("reports collapse before lower-priority conditions", () => {

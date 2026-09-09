@@ -1,4 +1,4 @@
-import type { AgentContext, AgentFinding, AgentResult } from "./types.ts";
+import type { AgentFinding, AgentResult, SimulationAgentContext } from "./types.ts";
 
 function finding(
   severity: AgentFinding["severity"],
@@ -10,7 +10,7 @@ function finding(
   return { code, severity, title, detail, suggestedAction };
 }
 
-export function triageSimulation({ metrics }: AgentContext): AgentResult {
+export function triageSimulation({ metrics }: SimulationAgentContext): AgentResult {
   const findings: AgentFinding[] = [];
 
   if (metrics.population === 0 || metrics.viability < 0.08) {

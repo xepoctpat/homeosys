@@ -17,7 +17,15 @@ interface FieldCanvasProps {
 
 function hexToRgb(hex: string): [number, number, number] {
   const h = hex.replace("#", "").trim();
-  const n = parseInt(h.length === 3 ? h.split("").map((c) => c + c).join("") : h, 16);
+  const n = parseInt(
+    h.length === 3
+      ? h
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : h,
+    16,
+  );
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
@@ -125,6 +133,8 @@ export function FieldCanvas({
         fg: hexToRgb(pick("--color-fg", "#e8e6dc")),
         cold: hexToRgb(pick("--color-heat-cold", "#1a2830")),
         hot: hexToRgb(pick("--color-heat-hot", "#3a2a1c")),
+        energyLow: hexToRgb(pick("--color-energy-low", "#111b24")),
+        energyHigh: hexToRgb(pick("--color-energy-high", "#c3a85d")),
       };
     }
 
@@ -214,7 +224,7 @@ export function FieldCanvas({
     gfx.canvas.addEventListener("pointercancel", onUp);
 
     function render() {
-      const { bg, accent, fg, cold, hot } = theme;
+      const { bg, accent, fg, cold, hot, energyLow, energyHigh } = theme;
       gfx.ctx.fillStyle = `rgb(${bg[0]},${bg[1]},${bg[2]})`;
       gfx.ctx.fillRect(0, 0, cssW, cssH);
 
@@ -235,9 +245,10 @@ export function FieldCanvas({
         for (let i = 0; i < cols * rows; i++) {
           let c = bg;
           if (heatRef.current) c = mix(cold, hot, heat[i]);
-          c = mix(bg, c, heatRef.current ? 0.55 : 0);
+          c = mix(bg, c, heatRef.current ? 0.82 : 0);
           if (energyRef.current) {
-            c = mix(c, accent, energy[i] * 0.35);
+            const energyColor = mix(energyLow, energyHigh, energy[i]);
+            c = mix(c, energyColor, heatRef.current ? 0.5 : 0.82);
           }
           const o = i * 4;
           data[o] = c[0];
@@ -301,7 +312,11 @@ export function FieldCanvas({
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
       const box = measureBox(gfx.wrap);
-      if (box.w >= 32 && box.h >= 32 && (Math.abs(box.w - cssW) > 1 || Math.abs(box.h - cssH) > 1)) {
+      if (
+        box.w >= 32 &&
+        box.h >= 32 &&
+        (Math.abs(box.w - cssW) > 1 || Math.abs(box.h - cssH) > 1)
+      ) {
         resize();
       }
       if (runningRef.current && engine.cols > 0) {
@@ -381,12 +396,31 @@ export function FieldCanvas({
   }, [engine, onMetrics, onUnlock, initialPreset]);
 
   return (
-    <div ref={wrapRef} className="absolute inset-0 h-full min-h-0 w-full min-w-0 overflow-hidden bg-bg">
+    <div
+      ref={wrapRef}
+      className="absolute inset-0 h-full min-h-0 w-full min-w-0 overflow-hidden bg-bg"
+    >
       <canvas
         ref={canvasRef}
         className="block h-full w-full max-h-full max-w-full touch-none"
         aria-label="Cellular field"
       />
+      {(showHeat || showEnergy) && (
+        <div className="pointer-events-none absolute left-3 top-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-white/10 bg-black/55 px-2.5 py-1.5 text-[10px] font-medium tracking-wide text-white/75 backdrop-blur-sm">
+          {showHeat && (
+            <span className="flex items-center gap-1.5">
+              <i className="h-2 w-2 rounded-full bg-[#c46d43]" />
+              heat: cold → hot
+            </span>
+          )}
+          {showEnergy && (
+            <span className="flex items-center gap-1.5">
+              <i className="h-2 w-2 rounded-full bg-[#c3a85d]" />
+              energy: low → rich
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
