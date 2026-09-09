@@ -104,6 +104,13 @@ export function isMainModule(moduleUrl) {
   }
 }
 
+/** Windows cannot spawn npm-installed `.cmd` shims by their bare command name. */
+export function resolveCommand(command, platform = process.platform) {
+  return platform === "win32" && command === "vite"
+    ? join(projectRoot(), "node_modules", ".bin", "vite.cmd")
+    : command;
+}
+
 function main(argv) {
   const [command, ...args] = argv;
   if (!command) {
@@ -111,13 +118,18 @@ function main(argv) {
     process.exit(2);
   }
   const env = mergeAppEnv(readAppEnv(projectRoot()), process.env);
-  const child = spawn(command, args, { stdio: "inherit", env });
+  const resolvedCommand = resolveCommand(command);
+  const child = spawn(resolvedCommand, args, {
+    stdio: "inherit",
+    env,
+    shell: process.platform === "win32" && command === "vite",
+  });
   // The dev server is long-running and is stopped by signalling this wrapper.
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
     process.on(signal, () => child.kill(signal));
   }
   child.on("error", (err) => {
-    console.error(`[with-app-env] failed to run ${command}:`, err?.message || err);
+    console.error(`[with-app-env] failed to run ${resolvedCommand}:`, err?.message || err);
     process.exit(127);
   });
   child.on("exit", (code, signal) => {

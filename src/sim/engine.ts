@@ -285,6 +285,43 @@ export class SimEngine {
 
     this.lastPop = 0;
     for (let i = 0; i < n; i++) this.lastPop += this.alive[i];
+    this.refreshBaselineMetrics();
+  }
+
+  private refreshBaselineMetrics(): void {
+    const n = this.alive.length;
+    if (n === 0) return;
+    let population = 0;
+    let regulators = 0;
+    let heat = 0;
+    let energy = 0;
+    for (let i = 0; i < n; i++) {
+      population += this.alive[i];
+      if (this.alive[i] && this.kind[i]) regulators++;
+      heat += this.heat[i];
+      energy += this.energy[i];
+    }
+    const density = population / n;
+    const p = Math.max(0.0001, Math.min(0.9999, density));
+    const entropy = -(p * Math.log2(p) + (1 - p) * Math.log2(1 - p));
+    const meanEnergy = energy / n;
+    const stab = 1;
+    this.lastPop = population;
+    this.lastReg = regulators;
+    this.lastEntropy = entropy;
+    this.lastHeat = heat / n;
+    this.lastEnergy = meanEnergy;
+    this.lastViability =
+      0.28 *
+        (1 -
+          Math.min(
+            1,
+            Math.abs(density - this.setpoint) / Math.max(0.08, this.setpoint),
+          )) +
+      0.24 * entropy +
+      0.2 * (1 - stab) +
+      0.16 * meanEnergy +
+      0.12 * (population > 0 ? 1 : 0);
   }
 
   private paintNoise(density: number, scale: number): void {
