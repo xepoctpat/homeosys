@@ -25,6 +25,11 @@ is deterministic and covered by a focused test. Keep agent code separate from
 the render loop and `SimEngine`; agents may observe snapshots but must not
 mutate simulation state.
 
+The canonical plan lives in the docs directory, especially
+`docs/checkpoints/` and `docs/local-agents.md`. Do not keep a separate live
+plan window in the app when the repo already records the work in docs; the
+source of truth stays doc-first and the app remains focused on the simulation.
+
 Authentication, connector data, P2P rooms, and GitHub Actions are optional
 integration layers. They must not become prerequisites for local agent
 discovery or simulation triage.

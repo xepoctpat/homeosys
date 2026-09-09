@@ -65,9 +65,11 @@ test("the template ships auth off", () => {
 });
 
 test("resolves the Vite Windows shim without changing other commands", () => {
-  assert.match(resolveCommand("vite", "win32"), /node_modules[\\/]\.bin[\\/]vite\.cmd$/);
-  assert.equal(resolveCommand(process.execPath, "win32"), process.execPath);
-  assert.equal(resolveCommand("vite", "linux"), "vite");
+  const [node, entry] = resolveCommand("vite", "win32");
+  assert.equal(node, process.execPath);
+  assert.match(entry, /node_modules[\\/]vite[\\/]bin[\\/]vite\.js$/);
+  assert.deepEqual(resolveCommand(process.execPath, "win32"), [process.execPath]);
+  assert.deepEqual(resolveCommand("vite", "linux"), ["vite"]);
 });
 
 test("vite loadEnv resolves the wrapped value", () => {

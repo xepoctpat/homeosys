@@ -13,6 +13,8 @@ import {
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { PRESETS, type PaintMode, type PresetId, type SimSettings } from "@/sim/types";
 
@@ -81,15 +83,14 @@ function RangeInput({
   onChange: (v: number) => void;
 }) {
   return (
-    <input
-      type="range"
+    <Slider
+      aria-label={label}
       min={min}
       max={max}
       step={step}
-      value={value}
-      aria-label={label}
-      onChange={(e) => onChange(Number(e.target.value))}
-      className="h-9 w-full cursor-pointer appearance-none bg-transparent accent-accent"
+      value={[value]}
+      onValueChange={([next]) => onChange(next)}
+      className="h-9 w-full"
     />
   );
 }
@@ -106,41 +107,18 @@ function ToggleRow({
   onCheckedChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 py-1">
+    <div className="flex items-center justify-between gap-4 py-1">
       <div className="min-w-0">
         <div className="text-sm text-fg">{label}</div>
         {description ? (
           <p className="mt-0.5 text-xs leading-relaxed text-subtle">{description}</p>
         ) : null}
       </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
+      <Switch
+        checked={checked}
+        onCheckedChange={onCheckedChange}
         aria-label={`${label}: ${checked ? "on" : "off"}`}
-        onClick={(e) => {
-          onCheckedChange(!checked);
-          e.currentTarget.blur();
-        }}
-        className="inline-flex h-9 shrink-0 items-stretch rounded-md bg-bg p-0.5 shadow-[0_0_0_1px_rgba(255,255,255,0.14)]"
-      >
-        <span
-          className={cn(
-            "flex w-11 items-center justify-center rounded-sm text-xs font-medium transition-colors duration-150",
-            !checked ? "bg-raised text-fg" : "text-subtle",
-          )}
-        >
-          Off
-        </span>
-        <span
-          className={cn(
-            "flex w-11 items-center justify-center rounded-sm text-xs font-medium transition-colors duration-150",
-            checked ? "bg-accent text-accent-fg" : "text-subtle",
-          )}
-        >
-          On
-        </span>
-      </button>
+      />
     </div>
   );
 }

@@ -3,7 +3,7 @@ import {
   cloneGenome,
   genomeToString,
   mutateGenome,
-} from "./genome";
+} from "./genome.ts";
 import {
   DEFAULT_SETTINGS,
   LOOP_META,
@@ -14,7 +14,7 @@ import {
   type PaintMode,
   type PresetId,
   type SimSettings,
-} from "./types";
+} from "./types.ts";
 
 const TEST_WINDOW = 36;
 const HISTORY = 96;
@@ -212,7 +212,7 @@ export class SimEngine {
 
   seed(preset: PresetId = "homeostat", seedKey?: number): void {
     if (this.cols === 0 || this.rows === 0) return;
-    this.seedKey = seedKey ?? ((this.seedKey + 1) | 0);
+    this.seedKey = seedKey ?? Math.floor(Math.random() * 0x7fffffff);
     this.randState = (this.seedKey * 1103515245 + 12345) >>> 0;
     this.generation = 0;
     this.adaptations = 0;
@@ -278,9 +278,8 @@ export class SimEngine {
       this.paintNoise(0.22, 1.8);
       this.placeRegulators(5);
     } else {
-      this.paintBlobs(0.34, 1.4);
-      this.stampGun(Math.floor(cols * 0.1), Math.floor(rows * 0.28));
-      this.placeRegulators(4);
+      this.paintNoise(0.24, 3.2);
+      this.placeRegulators(2);
     }
 
     this.lastPop = 0;
@@ -303,25 +302,28 @@ export class SimEngine {
     }
     const density = population / n;
     const p = Math.max(0.0001, Math.min(0.9999, density));
-    const entropy = -(p * Math.log2(p) + (1 - p) * Math.log2(1 - p));
-    const meanEnergy = energy / n;
+    const entropy = population === 0 ? 0 : -(p * Math.log2(p) + (1 - p) * Math.log2(1 - p));
+    const meanEnergy = population === 0 ? 0 : energy / n;
+    const meanHeat = population === 0 ? 0 : heat / n;
     const stab = 1;
     this.lastPop = population;
     this.lastReg = regulators;
     this.lastEntropy = entropy;
-    this.lastHeat = heat / n;
+    this.lastHeat = meanHeat;
     this.lastEnergy = meanEnergy;
     this.lastViability =
-      0.28 *
-        (1 -
-          Math.min(
-            1,
-            Math.abs(density - this.setpoint) / Math.max(0.08, this.setpoint),
-          )) +
-      0.24 * entropy +
-      0.2 * (1 - stab) +
-      0.16 * meanEnergy +
-      0.12 * (population > 0 ? 1 : 0);
+      population === 0
+        ? 0
+        : 0.28 *
+            (1 -
+              Math.min(
+                1,
+                Math.abs(density - this.setpoint) / Math.max(0.08, this.setpoint),
+              )) +
+            0.24 * entropy +
+            0.2 * (1 - stab) +
+            0.16 * meanEnergy +
+            0.12 * (population > 0 ? 1 : 0);
   }
 
   private paintNoise(density: number, scale: number): void {
@@ -403,9 +405,14 @@ export class SimEngine {
     this.alive.fill(0);
     this.kind.fill(0);
     this.tenure.fill(0);
+    this.heat.fill(0);
+    this.energy.fill(0);
+    this.nextHeat.fill(0);
+    this.nextEnergy.fill(0);
     this.shown.fill(0);
     this.generation = 0;
     this.pulses = [];
+    this.refreshBaselineMetrics();
   }
 
   paint(cx: number, cy: number, mode: PaintMode, radius: number): void {
@@ -434,6 +441,7 @@ export class SimEngine {
         }
       }
     }
+    this.refreshBaselineMetrics();
   }
 
   applySettings(partial: Partial<SimSettings>): void {

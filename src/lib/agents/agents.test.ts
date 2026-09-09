@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { SimEngine } from "../../sim/engine.ts";
 import { getLocalAgent, LOCAL_AGENTS, LOCAL_SKILLS, triageSimulation } from "./index.ts";
 import type { Metrics } from "../../sim/types.ts";
 
@@ -52,4 +53,35 @@ test("reports stable fields and active feedback without inventing warnings", () 
     result.findings.map((item) => item.code),
     ["feedback-active"],
   );
+});
+
+test("reseeds with fresh random patterns by default", () => {
+  const engine = new SimEngine();
+  engine.allocate(64, 48);
+  engine.seed("homeostat");
+  const firstSeed = engine.seedKey;
+  const firstPattern = Array.from(engine.alive);
+
+  engine.seed("homeostat");
+
+  assert.notEqual(engine.seedKey, firstSeed);
+  assert.notDeepEqual(Array.from(engine.alive), firstPattern);
+});
+
+test("clear and paint recalculate population and viability metrics", () => {
+  const engine = new SimEngine();
+  engine.allocate(32, 24);
+  engine.seed("homeostat");
+
+  const before = engine.snapshot();
+  assert.ok(before.population > 0);
+
+  engine.clear();
+  assert.equal(engine.snapshot().population, 0);
+  assert.equal(engine.snapshot().viability, 0);
+
+  engine.paint(5, 5, "life", 1);
+  const afterPaint = engine.snapshot();
+  assert.ok(afterPaint.population > 0);
+  assert.ok(afterPaint.viability > 0);
 });
