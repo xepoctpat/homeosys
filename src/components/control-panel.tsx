@@ -309,7 +309,7 @@ export function ControlPanel(props: ControlPanelProps) {
               ) : null}
             </div>
             <ToggleRow
-              label="Weather shapes survival"
+              label="Climate shapes survival"
               description="Heat, energy, and season decide who lives."
               checked={settings.environment}
               onCheckedChange={(v) => onSettings({ environment: v })}
@@ -438,7 +438,7 @@ export function ControlPanel(props: ControlPanelProps) {
               />
             </Row>
             <ToggleRow
-              label="Follow the field"
+              label="Auto target density"
               description="The target density tracks what this world can actually hold."
               checked={settings.autoSetpoint}
               onCheckedChange={(v) => onSettings({ autoSetpoint: v })}
@@ -479,7 +479,7 @@ export function ControlPanel(props: ControlPanelProps) {
                 onCheckedChange={(v) => onSettings({ autoEnabled: v })}
               />
               <ToggleRow
-                label="Moving goal"
+                label="Drift the target"
                 description="The target itself slowly drifts, so the controller never settles."
                 checked={settings.observerEnabled}
                 onCheckedChange={(v) => onSettings({ observerEnabled: v })}

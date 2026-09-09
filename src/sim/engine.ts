@@ -210,9 +210,16 @@ export class SimEngine {
     });
   }
 
+  private nextSeedKey(seedKey?: number): number {
+    if (seedKey !== undefined) return seedKey >>> 0;
+    const fresh = ((Math.random() * 0xffffffff) >>> 0) ^ ((Date.now() * 1664525) >>> 0);
+    this.seedKey = fresh;
+    return fresh;
+  }
+
   seed(preset: PresetId = "homeostat", seedKey?: number): void {
     if (this.cols === 0 || this.rows === 0) return;
-    this.seedKey = seedKey ?? Math.floor(Math.random() * 0x7fffffff);
+    this.seedKey = this.nextSeedKey(seedKey);
     this.randState = (this.seedKey * 1103515245 + 12345) >>> 0;
     this.generation = 0;
     this.adaptations = 0;
@@ -261,7 +268,6 @@ export class SimEngine {
 
     if (preset === "classic") {
       this.paintNoise(0.28, 1.6);
-      this.stampGun(Math.floor(cols * 0.08), Math.floor(rows * 0.35));
     } else if (preset === "dust") {
       this.paintNoise(0.07, 2.4);
       this.placeRegulators(2);
@@ -278,8 +284,8 @@ export class SimEngine {
       this.paintNoise(0.22, 1.8);
       this.placeRegulators(5);
     } else {
-      this.paintNoise(0.24, 3.2);
-      this.placeRegulators(2);
+      this.paintBlobs(0.34, 1.4);
+      this.placeRegulators(4);
     }
 
     this.lastPop = 0;
@@ -380,24 +386,6 @@ export class SimEngine {
       this.kind[i] = 1;
       this.shown[i] = 1;
       this.tenure[i] = 12;
-    }
-  }
-
-  private stampGun(ox: number, oy: number): void {
-    const coords: [number, number][] = [
-      [0, 4], [0, 5], [1, 4], [1, 5],
-      [10, 4], [10, 5], [10, 6], [11, 3], [11, 7], [12, 2], [12, 8], [13, 2], [13, 8],
-      [14, 5], [15, 3], [15, 7], [16, 4], [16, 5], [16, 6], [17, 5],
-      [20, 2], [20, 3], [20, 4], [21, 2], [21, 3], [21, 4], [22, 1], [22, 5],
-      [24, 0], [24, 1], [24, 5], [24, 6],
-      [34, 2], [34, 3], [35, 2], [35, 3],
-    ];
-    for (const [x, y] of coords) {
-      const xx = wrap(ox + x, this.cols);
-      const yy = wrap(oy + y, this.rows);
-      const i = this.idx(xx, yy);
-      this.alive[i] = 1;
-      this.shown[i] = 1;
     }
   }
 

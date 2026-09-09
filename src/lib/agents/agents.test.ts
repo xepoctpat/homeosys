@@ -55,33 +55,39 @@ test("reports stable fields and active feedback without inventing warnings", () 
   );
 });
 
-test("reseeds with fresh random patterns by default", () => {
-  const engine = new SimEngine();
-  engine.allocate(64, 48);
-  engine.seed("homeostat");
-  const firstSeed = engine.seedKey;
-  const firstPattern = Array.from(engine.alive);
+test("reseeds with fresh patterns while fixed seeds remain deterministic", () => {
+  const a = new SimEngine();
+  const b = new SimEngine();
+  a.allocate(64, 48);
+  b.allocate(64, 48);
+  a.seed("homeostat");
+  b.seed("homeostat");
+  assert.notDeepEqual(Array.from(a.alive), Array.from(b.alive));
 
-  engine.seed("homeostat");
-
-  assert.notEqual(engine.seedKey, firstSeed);
-  assert.notDeepEqual(Array.from(engine.alive), firstPattern);
+  const c = new SimEngine();
+  const d = new SimEngine();
+  c.allocate(64, 48);
+  d.allocate(64, 48);
+  c.seed("homeostat", 7);
+  d.seed("homeostat", 7);
+  assert.deepEqual(Array.from(c.alive), Array.from(d.alive));
 });
 
-test("clear and paint recalculate population and viability metrics", () => {
+test("clear and paint recalculate live metrics instead of showing stale population state", () => {
   const engine = new SimEngine();
-  engine.allocate(32, 24);
+  engine.allocate(40, 30);
   engine.seed("homeostat");
 
-  const before = engine.snapshot();
-  assert.ok(before.population > 0);
-
   engine.clear();
-  assert.equal(engine.snapshot().population, 0);
-  assert.equal(engine.snapshot().viability, 0);
+  const cleared = engine.snapshot();
+  assert.equal(cleared.population, 0);
+  assert.equal(cleared.density, 0);
+  assert.equal(cleared.viability, 0);
 
-  engine.paint(5, 5, "life", 1);
-  const afterPaint = engine.snapshot();
-  assert.ok(afterPaint.population > 0);
-  assert.ok(afterPaint.viability > 0);
+  engine.seed("homeostat");
+  engine.paint(5, 5, "erase", 2);
+  const painted = engine.snapshot();
+  const livePopulation = engine.alive.reduce((sum, cell) => sum + cell, 0);
+  assert.equal(painted.population, livePopulation);
+  assert.equal(painted.density, livePopulation / engine.alive.length);
 });
