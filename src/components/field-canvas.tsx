@@ -137,7 +137,7 @@ export function FieldCanvas({
 
     function seedAt(w: number, h: number) {
       engine.fitTo(Math.max(w, 320), Math.max(h, 240));
-      engine.seed(initialPreset, 7);
+      engine.seed(initialPreset);
       snapShown();
       onMetrics();
     }

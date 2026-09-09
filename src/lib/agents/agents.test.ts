@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { getLocalAgent, LOCAL_AGENTS, LOCAL_SKILLS, triageSimulation } from "./index.ts";
+import { SimEngine } from "../../sim/engine.ts";
 import type { Metrics } from "../../sim/types.ts";
 
 function metrics(overrides: Partial<Metrics> = {}): Metrics {
@@ -52,4 +53,42 @@ test("reports stable fields and active feedback without inventing warnings", () 
     result.findings.map((item) => item.code),
     ["feedback-active"],
   );
+});
+
+test("reseed creates a fresh field unless a fixed seed is requested", () => {
+  const a = new SimEngine();
+  const b = new SimEngine();
+  a.allocate(64, 48);
+  b.allocate(64, 48);
+
+  a.seed("homeostat");
+  b.seed("homeostat");
+  assert.notDeepEqual(Array.from(a.alive), Array.from(b.alive));
+
+  const c = new SimEngine();
+  const d = new SimEngine();
+  c.allocate(64, 48);
+  d.allocate(64, 48);
+  c.seed("homeostat", 7);
+  d.seed("homeostat", 7);
+  assert.deepEqual(Array.from(c.alive), Array.from(d.alive));
+});
+
+test("clear and paint recalculate live metrics instead of showing stale population state", () => {
+  const engine = new SimEngine();
+  engine.allocate(40, 30);
+  engine.seed("homeostat");
+
+  engine.clear();
+  const cleared = engine.snapshot();
+  assert.equal(cleared.population, 0);
+  assert.equal(cleared.density, 0);
+  assert.ok(Number.isFinite(cleared.viability));
+
+  engine.seed("homeostat");
+  engine.paint(5, 5, "erase", 2);
+  const painted = engine.snapshot();
+  const livePopulation = engine.alive.reduce((sum, cell) => sum + cell, 0);
+  assert.equal(painted.population, livePopulation);
+  assert.equal(painted.density, livePopulation / engine.alive.length);
 });
