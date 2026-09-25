@@ -77,11 +77,14 @@ hypotheses — not claims about persistent patterns.
 - **C1 landed @ `44cfaf9`:** ThetaV0 + golden replay; evidence JSONL embeds `theta.v0` (see [`docs/theta-v0.md`](docs/theta-v0.md)).
 - **C2 landed @ `2f45281`:** full ThetaV0 + `schemaVersion` on **all** evidence exports (CSV + JSONL fail-closed via `assertExportHasFullTheta`).
 - **C3 landed @ `51a88d2`:** M2 ladder-factor sweep (`src/sim/m2-ladder-sweep.ts`) over condition/controller/org/α/schedule **only**; continuous gains refused; `npm run evidence -- --sweep-m2` → `_smoke`. See [`docs/theta-v0.md`](docs/theta-v0.md) + [`docs/navigation-plan.md`](docs/navigation-plan.md).
-- **Eng:** dual-grid M2 ladder-factor expand @ `c1a979c` (48×36+72×54 in one run). **Reviewer PASS** (nits OK). Eng tip still `c1a979c`; docs tip lineage `772de4e`.
+- **Eng tip @ `f466e06`:** M2 schedule anatomy (`sustainedShort` + `pulseLong` / `--sweep-schedule-levels`). **Reviewer PASS** (nits OK). Prior dual-grid expand @ `c1a979c`; docs tip lineage prior `4cf35d8`.
 - **Shared-disk smoke** left in `_smoke` (gitignored; not committed; no `--write`/promote):
   - `evidence/_smoke/m2-thick-20260925-212913/` — 48-arm homeostatic thick
   - `evidence/_smoke/m2-thick-sc-20260925-222647/` — 144-arm sc×thick (studyCondition × thick axes; 144/144 ok)
-- **Characterization PARK** after sc×thick (Expert lean was park; dive caveat: prior thick was homeostatic-only).
+  - `evidence/_smoke/m2-sched-anat-20260925-225009/` — schedule-anatomy micro-sweep
+- **Characterization PARK** after schedule-anatomy (captain deferred; Coordinator chose park).
+- **Verdict:** **duration-not-family** under homeostatic×Central×VB (not schedule family/onset).
+- **Banked:** (1) CSVB homeostatic-only (2) duration not family/onset.
 - **E1 HOLD**; **M6 HARD-GATED**; observational ≠ closure.
 
 ## Docs
