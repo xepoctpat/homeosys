@@ -77,8 +77,11 @@ hypotheses — not claims about persistent patterns.
 - **C1 landed @ `44cfaf9`:** ThetaV0 + golden replay; evidence JSONL embeds `theta.v0` (see [`docs/theta-v0.md`](docs/theta-v0.md)).
 - **C2 landed @ `2f45281`:** full ThetaV0 + `schemaVersion` on **all** evidence exports (CSV + JSONL fail-closed via `assertExportHasFullTheta`).
 - **C3 landed @ `51a88d2`:** M2 ladder-factor sweep (`src/sim/m2-ladder-sweep.ts`) over condition/controller/org/α/schedule **only**; continuous gains refused; `npm run evidence -- --sweep-m2` → `_smoke`. See [`docs/theta-v0.md`](docs/theta-v0.md) + [`docs/navigation-plan.md`](docs/navigation-plan.md).
-- **Eng:** dual-grid M2 ladder-factor expand @ `c1a979c` (48×36+72×54 in one run). **Reviewer PASS** (nits OK).
-- **Shared-disk smoke land** (gitignored, not repo evidence): `evidence/_smoke/m2-thick-20260925-212913/` — 48-arm N=20 thick matrix (axes org/α/schedule/controller; studyCondition fixed homeostatic); 48/48 ok; **not committed**; do not promote to `evidence/{m2..m5}` without captain `--write`.
+- **Eng:** dual-grid M2 ladder-factor expand @ `c1a979c` (48×36+72×54 in one run). **Reviewer PASS** (nits OK). Eng tip still `c1a979c`; docs tip lineage `772de4e`.
+- **Shared-disk smoke** left in `_smoke` (gitignored; not committed; no `--write`/promote):
+  - `evidence/_smoke/m2-thick-20260925-212913/` — 48-arm homeostatic thick
+  - `evidence/_smoke/m2-thick-sc-20260925-222647/` — 144-arm sc×thick (studyCondition × thick axes; 144/144 ok)
+- **Characterization PARK** after sc×thick (Expert lean was park; dive caveat: prior thick was homeostatic-only).
 - **E1 HOLD**; **M6 HARD-GATED**; observational ≠ closure.
 
 ## Docs
