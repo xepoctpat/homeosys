@@ -24,6 +24,7 @@ export function MetricsBar({ metrics, running }: { metrics: Metrics | null; runn
     { label: "Viability", value: metrics ? metrics.viability.toFixed(2) : "—" },
     { label: "Setpoint", value: metrics ? pct(metrics.setpoint) : "—", hideOnSmall: true },
     { label: "Rule", value: metrics ? metrics.rule : "—" },
+    { label: "Seed", value: metrics ? String(metrics.seedKey >>> 0) : "—", hideOnSmall: true },
   ];
 
   return (

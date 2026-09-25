@@ -790,6 +790,7 @@ export class SimEngine {
       rule: genomeToString(this.genome),
       adaptations: this.adaptations,
       probing: this.probe !== null,
+      seedKey: this.seedKey,
       loops,
       popHistory: this.popHistory.slice(),
       viaHistory: this.viaHistory.slice(),

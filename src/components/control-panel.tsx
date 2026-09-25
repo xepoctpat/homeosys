@@ -16,7 +16,14 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { PRESETS, type PaintMode, type PresetId, type SimSettings } from "@/sim/types";
+import {
+  PRESETS,
+  STUDY_CONDITIONS,
+  type PaintMode,
+  type PresetId,
+  type SimSettings,
+  type StudyConditionId,
+} from "@/sim/types";
 
 type TabId = "run" | "paint" | "world" | "loops";
 
@@ -40,8 +47,14 @@ interface ControlPanelProps {
   onShowEnergy: (v: boolean) => void;
   onMuted: (v: boolean) => void;
   onSeed: (preset: PresetId) => void;
+  onReseed: () => void;
   onClear: () => void;
   onRefit: () => void;
+  seedKey: number;
+  seedLocked: boolean;
+  onSeedLocked: (locked: boolean) => void;
+  studyCondition: StudyConditionId | null;
+  onStudyCondition: (id: StudyConditionId) => void;
 }
 
 function Row({
@@ -185,8 +198,14 @@ export function ControlPanel(props: ControlPanelProps) {
     onShowEnergy,
     onMuted,
     onSeed,
+    onReseed,
     onClear,
     onRefit,
+    seedKey,
+    seedLocked,
+    onSeedLocked,
+    studyCondition,
+    onStudyCondition,
   } = props;
 
   const [tab, setTab] = useState<TabId>("run");
@@ -243,10 +262,47 @@ export function ControlPanel(props: ControlPanelProps) {
         {tab === "run" ? (
           <div className="space-y-5">
             <GuidanceCard eyebrow="Current study" title="Feedback under disturbance">
-              Compare three conditions over the same world: fixed rules, homeostatic
-              feedback, and ultrastable adaptation. Explore freely here; a controlled
-              study should keep the seed, disturbance, and generation limit fixed.
+              Compare three recorded setting packs over the same world pattern: baseline
+              (fixed B3/S23), homeostatic feedback, and ultrastable adaptation. Explore
+              freely here; controlled comparisons should keep seed, disturbance, and
+              generation limit fixed. Metrics are observations, not proof of cognition.
             </GuidanceCard>
+            <div>
+              <div className="mb-2 text-sm text-fg">Study conditions</div>
+              <p className="mb-2 text-xs leading-relaxed text-subtle">
+                Full packs for environment and loops. World presets still change only
+                environment fields.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {STUDY_CONDITIONS.map((c) => {
+                  const on = studyCondition === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      title={c.blurb}
+                      onClick={() => onStudyCondition(c.id)}
+                      className={cn(
+                        "rounded-full px-3 py-1.5 text-sm transition-colors duration-150",
+                        on ? "bg-accent text-accent-fg" : "bg-raised text-muted hover:text-fg",
+                      )}
+                      aria-pressed={on}
+                    >
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
+              {studyCondition ? (
+                <p className="mt-2 text-xs leading-relaxed text-subtle">
+                  {STUDY_CONDITIONS.find((c) => c.id === studyCondition)?.blurb}
+                </p>
+              ) : (
+                <p className="mt-2 text-xs leading-relaxed text-subtle">
+                  No study pack selected. Loops and world controls stay as set.
+                </p>
+              )}
+            </div>
             <Row
               label="Speed"
               value={`${speed.toFixed(0)} /s`}
@@ -261,8 +317,20 @@ export function ControlPanel(props: ControlPanelProps) {
                 onChange={onSpeed}
               />
             </Row>
+            <Row
+              label="Seed key"
+              value={String(seedKey >>> 0)}
+              hint="Shown for replay. Lock keeps this key on Reseed; unlock draws a new one."
+            >
+              <ToggleRow
+                label="Lock seed"
+                description="Reseed reuses the current key instead of drawing a new one."
+                checked={seedLocked}
+                onCheckedChange={onSeedLocked}
+              />
+            </Row>
             <div className="grid grid-cols-3 gap-2">
-              <Button variant="secondary" onClick={() => onSeed(preset)}>
+              <Button variant="secondary" onClick={onReseed}>
                 <Shuffle className="size-4" />
                 Reseed
               </Button>
@@ -275,7 +343,8 @@ export function ControlPanel(props: ControlPanelProps) {
               </Button>
             </div>
             <p className="text-xs leading-relaxed text-subtle">
-              Starts on the seeded pattern. Press Run to let the loops take over.
+              Starts on the seeded pattern. Press Run to observe how the active loops
+              respond.
             </p>
           </div>
         ) : null}

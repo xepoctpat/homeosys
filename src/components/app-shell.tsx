@@ -13,10 +13,12 @@ import {
 import {
   DEFAULT_SETTINGS,
   PRESETS,
+  STUDY_CONDITIONS,
   type Metrics,
   type PaintMode,
   type PresetId,
   type SimSettings,
+  type StudyConditionId,
 } from "@/sim/types";
 
 const STORAGE_KEY = "homeostat.v1";
@@ -71,6 +73,8 @@ export function AppShell() {
   const [showEnergy, setShowEnergy] = useState(true);
   const [muted, setMuted] = useState(false);
   const [preset, setPreset] = useState<PresetId>("homeostat");
+  const [seedLocked, setSeedLocked] = useState(false);
+  const [studyCondition, setStudyCondition] = useState<StudyConditionId | null>(null);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [layoutNonce, setLayoutNonce] = useState(0);
   const [hydrated, setHydrated] = useState(false);
@@ -174,6 +178,7 @@ export function AppShell() {
   const onSettings = useCallback(
     (partial: Partial<SimSettings>) => {
       recordAction("change-setting", Object.keys(partial).join(", "));
+      setStudyCondition(null);
       const next = { ...settingsRef.current, ...partial };
       settingsRef.current = next;
       engine.applySettings(next);
@@ -212,13 +217,39 @@ export function AppShell() {
       const next = worldSettingsForPreset(settingsRef.current, id);
       settingsRef.current = next;
       setPreset(id);
+      setStudyCondition(null);
       recordAction("reseed", id);
       setSettings(next);
       engine.applySettings(next);
-      engine.seed(id);
+      const key = seedLocked ? engine.seedKey : undefined;
+      engine.seed(id, key);
       onMetrics();
     },
-    [engine, onMetrics, recordAction],
+    [engine, onMetrics, recordAction, seedLocked],
+  );
+
+  const reseed = useCallback(() => {
+    recordAction("reseed", preset);
+    const key = seedLocked ? engine.seedKey : undefined;
+    engine.seed(preset, key);
+    onMetrics();
+  }, [engine, onMetrics, preset, recordAction, seedLocked]);
+
+  const applyStudyCondition = useCallback(
+    (id: StudyConditionId) => {
+      const found = STUDY_CONDITIONS.find((item) => item.id === id);
+      if (!found) return;
+      const next = { ...settingsRef.current, ...found.settings };
+      settingsRef.current = next;
+      setStudyCondition(id);
+      recordAction("change-setting", `study:${id}`);
+      setSettings(next);
+      engine.applySettings(next);
+      // Reuse the current seed key so condition swaps stay comparable.
+      engine.seed(preset, engine.seedKey);
+      onMetrics();
+    },
+    [engine, onMetrics, preset, recordAction],
   );
 
   const clear = useCallback(() => {
@@ -231,7 +262,7 @@ export function AppShell() {
     recordAction("fit");
     engine.cols = 0;
     setLayoutNonce((n) => n + 1);
-  }, [engine]);
+  }, [engine, recordAction]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -244,7 +275,7 @@ export function AppShell() {
         e.preventDefault();
         stepOnce();
       } else if (e.code === "KeyR") {
-        applyPreset(preset);
+        reseed();
       } else if (e.code === "KeyC") {
         clear();
       } else if (e.code === "KeyM") {
@@ -253,7 +284,7 @@ export function AppShell() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [toggleRun, stepOnce, applyPreset, preset, clear]);
+  }, [toggleRun, stepOnce, reseed, clear]);
 
   useEffect(() => {
     const vis = () => {
@@ -346,8 +377,14 @@ export function AppShell() {
               setMuted(value);
             }}
             onSeed={applyPreset}
+            onReseed={reseed}
             onClear={clear}
             onRefit={refit}
+            seedKey={metrics?.seedKey ?? engine.seedKey}
+            seedLocked={seedLocked}
+            onSeedLocked={setSeedLocked}
+            studyCondition={studyCondition}
+            onStudyCondition={applyStudyCondition}
           />
         </aside>
       </div>

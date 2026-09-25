@@ -24,6 +24,7 @@ function metrics(overrides: Partial<Metrics> = {}): Metrics {
     rule: "B3/S23",
     adaptations: 0,
     probing: false,
+    seedKey: 1,
     loops: [],
     popHistory: [],
     viaHistory: [],

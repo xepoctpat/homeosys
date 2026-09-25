@@ -43,6 +43,7 @@ export interface Metrics {
   rule: string;
   adaptations: number;
   probing: boolean;
+  seedKey: number;
   loops: LoopFlag[];
   popHistory: number[];
   viaHistory: number[];
@@ -181,6 +182,56 @@ export const PRESETS: {
       noise: 0.08,
       homeoGain: 0.8,
       setpoint: 0.08,
+    },
+  },
+];
+
+export type StudyConditionId = "baseline" | "homeostatic" | "ultrastable";
+
+export const STUDY_CONDITIONS: {
+  id: StudyConditionId;
+  name: string;
+  blurb: string;
+  settings: Partial<SimSettings>;
+}[] = [
+  {
+    id: "baseline",
+    name: "Baseline",
+    blurb: "Fixed B3/S23. Environment and feedback off. Observe unregulated dynamics.",
+    settings: {
+      environment: false,
+      cybernetics: false,
+      ultraEnabled: false,
+      varietyEnabled: false,
+      autoEnabled: false,
+      observerEnabled: false,
+      noise: 0,
+    },
+  },
+  {
+    id: "homeostatic",
+    name: "Homeostatic",
+    blurb: "Feedback on, ultrastability off. Observe regulation under the current world.",
+    settings: {
+      environment: true,
+      cybernetics: true,
+      ultraEnabled: false,
+      varietyEnabled: true,
+      autoEnabled: true,
+      observerEnabled: true,
+    },
+  },
+  {
+    id: "ultrastable",
+    name: "Ultrastable",
+    blurb: "Feedback plus slower rule changes when regulation repeatedly fails.",
+    settings: {
+      environment: true,
+      cybernetics: true,
+      ultraEnabled: true,
+      varietyEnabled: true,
+      autoEnabled: true,
+      observerEnabled: true,
     },
   },
 ];
