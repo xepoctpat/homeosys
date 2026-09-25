@@ -12,6 +12,7 @@ import {
 } from "@/lib/agents";
 import {
   DEFAULT_SETTINGS,
+  normalizeSimSettings,
   PRESETS,
   STUDY_CONDITIONS,
   type Metrics,
@@ -121,7 +122,7 @@ export function AppShell() {
   useEffect(() => {
     const saved = loadPersisted();
     if (saved.speed) setSpeed(saved.speed);
-    if (saved.settings) setSettings({ ...DEFAULT_SETTINGS, ...saved.settings });
+    if (saved.settings) setSettings(normalizeSimSettings({ ...DEFAULT_SETTINGS, ...saved.settings }));
     if (saved.paintMode) setPaintMode(saved.paintMode);
     if (typeof saved.brush === "number") setBrush(saved.brush);
     if (typeof saved.showHeat === "boolean") setShowHeat(saved.showHeat);
@@ -180,7 +181,7 @@ export function AppShell() {
     (partial: Partial<SimSettings>) => {
       recordAction("change-setting", Object.keys(partial).join(", "));
       setStudyCondition(null);
-      const next = { ...settingsRef.current, ...partial };
+      const next = normalizeSimSettings({ ...settingsRef.current, ...partial });
       settingsRef.current = next;
       engine.applySettings(next);
       setSettings(next);
@@ -217,7 +218,7 @@ export function AppShell() {
 
   const applyPreset = useCallback(
     (id: PresetId) => {
-      const next = worldSettingsForPreset(settingsRef.current, id);
+      const next = normalizeSimSettings(worldSettingsForPreset(settingsRef.current, id));
       settingsRef.current = next;
       setPreset(id);
       setStudyCondition(null);
@@ -242,7 +243,7 @@ export function AppShell() {
     (id: StudyConditionId) => {
       const found = STUDY_CONDITIONS.find((item) => item.id === id);
       if (!found) return;
-      const next = { ...settingsRef.current, ...found.settings };
+      const next = normalizeSimSettings({ ...settingsRef.current, ...found.settings });
       settingsRef.current = next;
       setStudyCondition(id);
       recordAction("change-setting", `study:${id}`);

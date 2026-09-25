@@ -3,17 +3,34 @@ import type { Metrics } from "@/sim/types";
 /** Safe numeric formatters — never throw on undefined/NaN/non-number. */
 export function fmt(n: unknown): string {
   if (typeof n !== "number" || !Number.isFinite(n)) return "—";
-  return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  try {
+    return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  } catch {
+    return "—";
+  }
 }
 
 export function pct(n: unknown): string {
   if (typeof n !== "number" || !Number.isFinite(n)) return "—";
-  return `${(n * 100).toFixed(1)}%`;
+  try {
+    return `${(n * 100).toFixed(1)}%`;
+  } catch {
+    return "—";
+  }
 }
 
 export function fixed(n: unknown, digits: number): string {
   if (typeof n !== "number" || !Number.isFinite(n)) return "—";
-  return n.toFixed(digits);
+  try {
+    return n.toFixed(digits);
+  } catch {
+    return "—";
+  }
+}
+
+/** Coerce unknown to a finite number, else fallback (for sliders / schedule knobs). */
+export function finiteOr(n: unknown, fallback: number): number {
+  return typeof n === "number" && Number.isFinite(n) ? n : fallback;
 }
 
 export type MetricCell = {

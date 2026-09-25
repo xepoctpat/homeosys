@@ -14,7 +14,12 @@ export function MetricsBar({ metrics, running }: { metrics: Metrics | null; runn
         }))
       : [];
 
-  const cells = buildMetricCells(metrics);
+  let cells: ReturnType<typeof buildMetricCells> = [];
+  try {
+    cells = buildMetricCells(metrics);
+  } catch {
+    cells = buildMetricCells(null);
+  }
 
   return (
     <div className="flex items-center gap-3 border-t border-border bg-surface px-3 py-2 sm:px-4">

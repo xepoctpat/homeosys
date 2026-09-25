@@ -74,6 +74,27 @@ export const PROVISIONAL_SCHEDULE: DisturbanceSchedule = {
   amplitude: 0.55,
 };
 
+const SCHEDULE_IDS: DisturbanceScheduleId[] = ["none", "pulse", "sustained"];
+
+function finiteNumber(n: unknown, fallback: number): number {
+  return typeof n === "number" && Number.isFinite(n) ? n : fallback;
+}
+
+/** Fill missing/non-finite disturbance fields. Prevents slider/toLocaleString crashes after shallow merges. */
+export function normalizeDisturbance(raw: unknown): DisturbanceSchedule {
+  const base = PROVISIONAL_SCHEDULE;
+  const d = raw && typeof raw === "object" ? (raw as Partial<DisturbanceSchedule>) : {};
+  const id = SCHEDULE_IDS.includes(d.id as DisturbanceScheduleId)
+    ? (d.id as DisturbanceScheduleId)
+    : base.id;
+  return {
+    id,
+    startGen: Math.max(0, Math.round(finiteNumber(d.startGen, base.startGen))),
+    duration: Math.max(0, Math.round(finiteNumber(d.duration, base.duration))),
+    amplitude: Math.min(1, Math.max(0, finiteNumber(d.amplitude, base.amplitude))),
+  };
+}
+
 export type UltraEpisodeOutcome = "kept" | "reverted";
 
 /**
@@ -227,6 +248,26 @@ export const DEFAULT_SETTINGS: SimSettings = {
   generationLimit: 0,
   measurementInterval: 10,
 };
+
+/** Deep-normalize settings so nested disturbance never loses numeric knobs (e.g. localStorage shallow merge). */
+export function normalizeSimSettings(raw: unknown): SimSettings {
+  const r = raw && typeof raw === "object" ? (raw as Partial<SimSettings>) : {};
+  return {
+    ...DEFAULT_SETTINGS,
+    ...r,
+    disturbance: normalizeDisturbance(r.disturbance ?? DEFAULT_SETTINGS.disturbance),
+    densityMin: finiteNumber(r.densityMin, DEFAULT_SETTINGS.densityMin),
+    densityMax: finiteNumber(r.densityMax, DEFAULT_SETTINGS.densityMax),
+    generationLimit: Math.max(
+      0,
+      Math.round(finiteNumber(r.generationLimit, DEFAULT_SETTINGS.generationLimit)),
+    ),
+    measurementInterval: Math.max(
+      0,
+      Math.round(finiteNumber(r.measurementInterval, DEFAULT_SETTINGS.measurementInterval)),
+    ),
+  };
+}
 
 export const PRESETS: {
   id: PresetId;

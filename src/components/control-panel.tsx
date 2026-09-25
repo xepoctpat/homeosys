@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import {
   PRESETS,
   PROVISIONAL_SCHEDULE,
+  normalizeDisturbance,
   STUDY_CONDITIONS,
   type DisturbanceScheduleId,
   type Metrics,
@@ -28,6 +29,7 @@ import {
   type StudyConditionId,
 } from "@/sim/types";
 import { disturbanceWindowCopy } from "@/sim/disturbance-window";
+import { finiteOr, fixed } from "@/sim/metrics-format";
 
 type TabId = "run" | "paint" | "world" | "loops";
 
@@ -100,14 +102,15 @@ function RangeInput({
   label: string;
   onChange: (v: number) => void;
 }) {
-  const progress = ((value - min) / Math.max(0.0001, max - min)) * 100;
+  const safe = finiteOr(value, min);
+  const progress = ((safe - min) / Math.max(0.0001, max - min)) * 100;
   return (
     <Slider
       aria-label={label}
       min={min}
       max={max}
       step={step}
-      value={[value]}
+      value={[safe]}
       onValueChange={([next]) => {
         if (next !== undefined) onChange(next);
       }}
@@ -316,7 +319,7 @@ export function ControlPanel(props: ControlPanelProps) {
             </div>
             <Row
               label="Speed"
-              value={`${speed.toFixed(0)} /s`}
+              value={`${fixed(speed, 0)} /s`}
               hint="How many generations tick each second."
             >
               <RangeInput
@@ -436,7 +439,7 @@ export function ControlPanel(props: ControlPanelProps) {
             />
             <Row
               label="Climate tilt"
-              value={settings.climate.toFixed(2)}
+              value={fixed(settings.climate, 2)}
               hint="Higher tilts the north colder and the south hotter."
             >
               <RangeInput
@@ -450,7 +453,7 @@ export function ControlPanel(props: ControlPanelProps) {
             </Row>
             <Row
               label="Season speed"
-              value={settings.seasonRate.toFixed(2)}
+              value={fixed(settings.seasonRate, 2)}
               hint="How quickly summer and winter cycle."
             >
               <RangeInput
@@ -464,7 +467,7 @@ export function ControlPanel(props: ControlPanelProps) {
             </Row>
             <Row
               label="Season strength"
-              value={settings.seasonAmp.toFixed(2)}
+              value={fixed(settings.seasonAmp, 2)}
               hint="How harsh the swing between summer and winter is."
             >
               <RangeInput
@@ -478,7 +481,7 @@ export function ControlPanel(props: ControlPanelProps) {
             </Row>
             <Row
               label="Available energy"
-              value={settings.energyRichness.toFixed(2)}
+              value={fixed(settings.energyRichness, 2)}
               hint="How much the soil can feed."
             >
               <RangeInput
@@ -492,7 +495,7 @@ export function ControlPanel(props: ControlPanelProps) {
             </Row>
             <Row
               label="Metabolic heat"
-              value={settings.metabolicHeat.toFixed(2)}
+              value={fixed(settings.metabolicHeat, 2)}
               hint="How much active cells warm their neighbors."
             >
               <RangeInput
@@ -506,7 +509,7 @@ export function ControlPanel(props: ControlPanelProps) {
             </Row>
             <Row
               label="Random flicker"
-              value={settings.noise.toFixed(2)}
+              value={fixed(settings.noise, 2)}
               hint="Chance a cell appears or dies for no reason."
             >
               <RangeInput
@@ -547,16 +550,10 @@ export function ControlPanel(props: ControlPanelProps) {
                       type="button"
                       onClick={() =>
                         onSettings({
-                          disturbance: {
+                          disturbance: normalizeDisturbance({
                             ...settings.disturbance,
                             id: opt.id,
-                            startGen:
-                              settings.disturbance.startGen || PROVISIONAL_SCHEDULE.startGen,
-                            duration:
-                              settings.disturbance.duration || PROVISIONAL_SCHEDULE.duration,
-                            amplitude:
-                              settings.disturbance.amplitude || PROVISIONAL_SCHEDULE.amplitude,
-                          },
+                          }),
                         })
                       }
                       className={cn(
@@ -618,7 +615,7 @@ export function ControlPanel(props: ControlPanelProps) {
                   </Row>
                   <Row
                     label="Amplitude"
-                    value={settings.disturbance.amplitude.toFixed(2)}
+                    value={fixed(settings.disturbance.amplitude, 2)}
                     hint="Provisional peak disturbance strength in [0, 1]."
                   >
                     <RangeInput
@@ -699,7 +696,7 @@ export function ControlPanel(props: ControlPanelProps) {
             />
             <Row
               label="Correction strength"
-              value={settings.homeoGain.toFixed(2)}
+              value={fixed(settings.homeoGain, 2)}
               hint="How hard it restocks empty ground or thins a crowd."
             >
               <RangeInput
@@ -724,7 +721,7 @@ export function ControlPanel(props: ControlPanelProps) {
             {!settings.autoSetpoint ? (
               <Row
                 label="Target density"
-                value={`${(settings.setpoint * 100).toFixed(0)}%`}
+                value={`${fixed(settings.setpoint * 100, 0)}%`}
                 hint="How full the field should stay."
               >
                 <RangeInput
