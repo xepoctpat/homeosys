@@ -156,10 +156,12 @@ alone is not evidence of autopoiesis.
 
 ### 7. Complex adaptive behavior
 
-**Hard gate (6→7):** Begin only after the step 6 gate is met. Analyze
-cluster lifetimes, spatial correlation, policy diversity, damage spreading,
-path dependence, basin structure, and transitions between emergent regimes. Do
-not infer criticality from a single power law or spectrum.
+**Gate (after step 5 metrics):** Begin once step 5 hierarchy/autonomy
+metrics are in place. May run in parallel with gated step 6; autopoiesis is not
+a prerequisite for CAS observables. Analyze cluster lifetimes, spatial
+correlation, policy diversity, damage spreading, path dependence, basin
+structure, and transitions between emergent regimes. Do not infer criticality
+from a single power law or spectrum.
 
 ## Experimental conditions
 

@@ -24,7 +24,7 @@
 | M4 | Setpoint vs viability | Density-error vs safe-interval; same disturbance family |
 | M5 | Hierarchy/autonomy | Central vs local vs coordinated; intervention/delay/bandwidth/ablation; VSM = hypothesis only |
 | M6 | Autopoiesis | **Gated** — after M1–M5; needs component + resource + boundary state; operational closure criteria predeclared |
-| M7 | Complex adaptive | **Gated** — after M5 metrics; predeclared CAS observables; no single power-law “criticality” |
+| M7 | Complex adaptive | **Gated after M5 metrics** — may run parallel to gated M6; autopoiesis not a prerequisite; predeclared CAS observables; no single power-law “criticality” |
 
 ## Near-term engineering order
 

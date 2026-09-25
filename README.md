@@ -26,7 +26,7 @@ The first study sequence is **homeostasis → ultrastability → viability**:
 5. Compare centralized, local, and coordinated control (hierarchy and
    autonomy).
 6. Autopoietic extension only after step 5 is characterized (hard gate 5→6).
-7. Complex adaptive analysis only after the step 6 gate (hard gate 6→7).
+7. Complex adaptive analysis after step 5 metrics are in place (may run parallel to gated step 6).
 
 Current experimental target: steps **1–2** until evidence moves it.
 
