@@ -74,7 +74,8 @@ hypotheses — not claims about persistent patterns.
 - **Observational evidence ≠ scientific closure of M2–M5**
 - **M6 remains HARD-GATED**
 - **Characterization→engine lock (captain ACCEPTED):** C1–C3 before E1; M2-only characterization first; θ v0 + env knobs in protocol; `schemaVersion` + full θ on exports before sweeps; first sweep axes = ladder factors only (condition/controller/org/α/schedule), not continuous gains; no multi-system/meta-dynamics/UI theater
-- **C1 landed @ `44cfaf9`:** ThetaV0 + golden replay; evidence JSONL embeds `theta.v0` (see [`docs/theta-v0.md`](docs/theta-v0.md)). **Next: C2.** Still observational ≠ closure; **M6 HARD-GATED**. See [`docs/navigation-plan.md`](docs/navigation-plan.md).
+- **C1 landed @ `44cfaf9`:** ThetaV0 + golden replay; evidence JSONL embeds `theta.v0` (see [`docs/theta-v0.md`](docs/theta-v0.md)).
+- **C2:** every evidence export path (JSONL run rows, arm `#` meta, **CSV** via `schemaVersion`+`thetaJson`) carries complete ThetaV0; `assertExportHasFullTheta` fail-closes. **Next: C3.** Still observational ≠ closure; **M6 HARD-GATED**. See [`docs/navigation-plan.md`](docs/navigation-plan.md).
 
 ## Docs
 

@@ -5,12 +5,14 @@ import {
   EVIDENCE_DEFAULT_N,
   EVIDENCE_GRIDS,
   EVIDENCE_SEED_KEYS,
+  exportArmCsv,
   exportArmJsonl,
   resolveSeedKeys,
   runEvidenceArm,
   runEvidenceMatrix,
   validateEvidenceMatrix,
 } from "./evidence-matrix.ts";
+import { THETA_SCHEMA_VERSION, assertExportHasFullTheta } from "./theta-v0.ts";
 
 test("validateEvidenceMatrix accepts all M2–M5 arms across grids", () => {
   const v = validateEvidenceMatrix();
@@ -107,4 +109,54 @@ test("smoke batch runs ≥1 arm and JSONL carries metadata header", () => {
   assert.equal(row.runIndex, 0);
   assert.equal(row.seedKey, EVIDENCE_SEED_KEYS[0]);
   assert.equal(typeof row.timeInKFraction, "number");
+  assert.equal(meta.schemaVersion, THETA_SCHEMA_VERSION);
+  assertExportHasFullTheta(meta);
+  assertExportHasFullTheta(row);
+});
+
+test("C2 arm CSV rows include schemaVersion + parseable full thetaJson", () => {
+  const arms = buildEvidenceArms().filter((a) => a.id === "m2-baseline");
+  assert.equal(arms.length, 1);
+  const ran = runEvidenceArm(arms[0], { n: 1, collectSeries: false });
+  const csv = exportArmCsv(ran);
+  const lines = csv.trim().split("\n");
+  const header = lines[0].split(",");
+  assert.ok(header.includes("schemaVersion"), "CSV header missing schemaVersion");
+  assert.ok(header.includes("thetaJson"), "CSV header missing thetaJson");
+  assert.equal(header[header.length - 2], "schemaVersion");
+  assert.equal(header[header.length - 1], "thetaJson");
+
+  // RFC4180-ish parse so commas inside quoted thetaJson do not break cells
+  const cells: string[] = [];
+  let cur = "";
+  let inQuotes = false;
+  const dataLine = lines[1];
+  for (let i = 0; i < dataLine.length; i++) {
+    const ch = dataLine[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (dataLine[i + 1] === '"') {
+          cur += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        cur += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ",") {
+      cells.push(cur);
+      cur = "";
+    } else {
+      cur += ch;
+    }
+  }
+  cells.push(cur);
+
+  assert.equal(cells[header.indexOf("schemaVersion")], THETA_SCHEMA_VERSION);
+  const theta = JSON.parse(cells[header.indexOf("thetaJson")]);
+  assertExportHasFullTheta(theta);
+  assert.equal(theta.schemaVersion, THETA_SCHEMA_VERSION);
 });

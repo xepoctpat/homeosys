@@ -20,7 +20,7 @@ import {
   type ResearchProtocol,
   type ResearchRunSummary,
 } from "./research-mode.ts";
-import { THETA_SCHEMA_VERSION, type ThetaV0 } from "./theta-v0.ts";
+import { THETA_SCHEMA_VERSION, assertExportHasFullTheta, type ThetaV0 } from "./theta-v0.ts";
 import type { DisturbanceSchedule, PresetId, StudyConditionId } from "./types.ts";
 
 /** Default N for published evidence arms (prefix of EVIDENCE_SEED_KEYS). */
@@ -419,10 +419,13 @@ export function armProtocolMeta(armResult: EvidenceArmResult): EvidenceProtocolM
 /** JSONL with a leading `#` metadata header line (JSON object) then one summary per line. */
 export function exportArmJsonl(armResult: EvidenceArmResult): string {
   const meta = armProtocolMeta(armResult);
+  assertExportHasFullTheta(meta);
   const header = `# ${JSON.stringify(meta)}`;
+  // exportJsonl fail-closes on each row's theta
   return `${header}\n${exportJsonl(armResult.results)}`;
 }
 
+/** CSV inherits research-mode exportCsv: flat metrics + schemaVersion + thetaJson. */
 export function exportArmCsv(armResult: EvidenceArmResult): string {
   return exportCsv(armResult.results);
 }

@@ -426,6 +426,36 @@ export function assertThetaV0(raw: unknown): ThetaValidation {
   return { ok: true, theta };
 }
 
+
+/**
+ * Fail-closed export stamp check for row | meta | bare ThetaV0.
+ * Accepts ResearchRunSummary-like `{ theta }`, EvidenceProtocolMeta-like
+ * `{ schemaVersion, theta }`, or a bare ThetaV0. Throws if schemaVersion/θ
+ * missing or truncated (any THETA_V0_KEYS field absent / invalid).
+ */
+export function assertExportHasFullTheta(rowOrMeta: unknown): ThetaV0 {
+  if (!rowOrMeta || typeof rowOrMeta !== "object") {
+    throw new Error("export stamp: expected object with ThetaV0");
+  }
+  const obj = rowOrMeta as Record<string, unknown>;
+  let rawTheta: unknown;
+  if ("theta" in obj) {
+    if ("schemaVersion" in obj && obj.schemaVersion != null && obj.schemaVersion !== THETA_SCHEMA_VERSION) {
+      throw new Error(
+        `export stamp schemaVersion must be "${THETA_SCHEMA_VERSION}", got ${String(obj.schemaVersion)}`,
+      );
+    }
+    rawTheta = obj.theta;
+  } else {
+    rawTheta = obj;
+  }
+  const validated = assertThetaV0(rawTheta);
+  if (!validated.ok) {
+    throw new Error(`export stamp incomplete ThetaV0: ${validated.error}`);
+  }
+  return validated.theta;
+}
+
 /** Stable JSON serialization (sorted keys) for hashes / golden compare. */
 export function serializeThetaV0(theta: ThetaV0): string {
   const ordered: Record<string, unknown> = {};

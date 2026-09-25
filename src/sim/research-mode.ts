@@ -18,6 +18,7 @@ import {
 } from "./types.ts";
 import {
   THETA_SCHEMA_VERSION,
+  assertExportHasFullTheta,
   assertThetaV0,
   defaultRuleString,
   genomeFromString,
@@ -615,8 +616,12 @@ export async function runBatchAsync(
   return results;
 }
 
-/** Flat columns for CSV (no nested series). */
-export const RESEARCH_CSV_COLUMNS: (keyof ResearchRunSummary)[] = [
+/**
+ * Flat metric columns for CSV (no nested series / no raw theta object).
+ * C2: schemaVersion + thetaJson appended so every CSV row carries full ThetaV0
+ * without exploding nested fields into theta.* columns.
+ */
+export const RESEARCH_CSV_FLAT_COLUMNS: readonly (keyof ResearchRunSummary)[] = [
   "runIndex",
   "seedKey",
   "studyCondition",
@@ -651,6 +656,15 @@ export const RESEARCH_CSV_COLUMNS: (keyof ResearchRunSummary)[] = [
   "lastUltraDeltaPop",
   "rule",
   "w",
+] as const;
+
+/** Stamp columns: schemaVersion + JSON-serialized complete ThetaV0 (incl. env knobs). */
+export const RESEARCH_CSV_THETA_COLUMNS = ["schemaVersion", "thetaJson"] as const;
+
+/** Full CSV header: flat metrics + schemaVersion + thetaJson. */
+export const RESEARCH_CSV_COLUMNS: readonly string[] = [
+  ...RESEARCH_CSV_FLAT_COLUMNS,
+  ...RESEARCH_CSV_THETA_COLUMNS,
 ];
 
 function csvEscape(value: unknown): string {
@@ -659,17 +673,39 @@ function csvEscape(value: unknown): string {
   return s;
 }
 
-/** Serialize batch summaries as JSONL (one summary object per line, series nested). */
-export function exportJsonl(results: ResearchRunSummary[]): string {
-  return results.map((row) => JSON.stringify(row)).join("\n") + (results.length ? "\n" : "");
+function csvCellForColumn(row: ResearchRunSummary, col: string): string {
+  if (col === "schemaVersion") {
+    return csvEscape(row.theta.schemaVersion);
+  }
+  if (col === "thetaJson") {
+    return csvEscape(JSON.stringify(row.theta));
+  }
+  return csvEscape(row[col as keyof ResearchRunSummary]);
 }
 
-/** Serialize batch summaries as CSV (flat; series omitted). */
+/** Serialize batch summaries as JSONL (one summary object per line, series nested). */
+export function exportJsonl(results: ResearchRunSummary[]): string {
+  return (
+    results
+      .map((row) => {
+        assertExportHasFullTheta(row);
+        return JSON.stringify(row);
+      })
+      .join("\n") + (results.length ? "\n" : "")
+  );
+}
+
+/**
+ * Serialize batch summaries as CSV (flat metrics + schemaVersion + thetaJson).
+ * thetaJson is JSON.stringify(row.theta) so parsers recover complete ThetaV0
+ * (incl. env knobs) without theta.* column explosion. Throws if θ missing.
+ */
 export function exportCsv(results: ResearchRunSummary[]): string {
   const header = RESEARCH_CSV_COLUMNS.join(",");
-  const lines = results.map((row) =>
-    RESEARCH_CSV_COLUMNS.map((col) => csvEscape(row[col])).join(","),
-  );
+  const lines = results.map((row) => {
+    assertExportHasFullTheta(row);
+    return RESEARCH_CSV_COLUMNS.map((col) => csvCellForColumn(row, col)).join(",");
+  });
   return [header, ...lines].join("\n") + (results.length ? "\n" : "");
 }
 

@@ -1,6 +1,6 @@
 # ThetaV0 (characterization lock)
 
-**Status:** C1 landed. Observational scaffolding ≠ scientific closure. **M6 HARD-GATED.**
+**Status:** C1+C2 landed. Observational scaffolding ≠ scientific closure. **M6 HARD-GATED.**
 
 ThetaV0 (`schemaVersion: "theta.v0"`) is the captain/Architect-frozen parameter stamp carried on every research lock and evidence export **before** any E1 sweep engine.
 
@@ -29,8 +29,10 @@ K + run: `densityMin`, `densityMax` (default `PROTOCOL_CALIBRATED_K`), `generati
 - `thetaFromProtocol` / `protocolFromTheta` / `settingsFromTheta`
 - `validateProtocol` stamps complete knobs (packs seed defaults; run path does not silently re-merge packs)
 - Evidence JSONL meta + every run row carry full ThetaV0
+- CSV rows carry `schemaVersion` + `thetaJson` (= `JSON.stringify(theta)`) so flat CSV keeps complete θ
+- `assertExportHasFullTheta` fail-closes exporters/tests if θ truncated or missing
 
-## Sweep policy (later — not C1)
+## Sweep policy (later — C3/E1, not C2)
 
 First sweep axes = **ladder factors only**: condition / controller / org / α / schedule. Continuous gains are recorded in θ for completeness but are **not** first-axis knobs. No multi-system / meta-dynamics / UI theater.
 
