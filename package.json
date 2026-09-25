@@ -17,7 +17,7 @@
     "preview:stop": "node scripts/preview.mjs stop",
     "typecheck": "tsc --noEmit",
     "check:auth": "node scripts/check-auth-invariant.mjs",
-    "test": "node --test scripts/*.test.mjs && tsx --test src/lib/app-data/app-data.test.ts src/lib/auth/gate-identity.test.ts src/lib/agents/agents.test.ts src/sim/calibrated-k.test.ts src/sim/engine.test.ts src/sim/metrics-format.test.ts src/sim/disturbance-window.test.ts src/sim/schedule-flip.test.ts src/sim/research-mode.test.ts src/sim/evidence-matrix.test.ts",
+    "test": "node --test scripts/*.test.mjs && tsx --test src/lib/app-data/app-data.test.ts src/lib/auth/gate-identity.test.ts src/lib/agents/agents.test.ts src/sim/calibrated-k.test.ts src/sim/engine.test.ts src/sim/metrics-format.test.ts src/sim/disturbance-window.test.ts src/sim/schedule-flip.test.ts src/sim/research-mode.test.ts src/sim/evidence-matrix.test.ts scripts/evidence-out-guard.test.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
     "evidence": "tsx scripts/run-evidence.ts"

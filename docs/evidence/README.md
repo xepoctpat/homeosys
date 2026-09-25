@@ -1,3 +1,5 @@
+Subpaths under `evidence/` (e.g. `evidence/m2`) also require `--write`; only `evidence/_smoke` is writable without it.
+
 # Evidence ladder (M2–M5)
 
 Headless **observational** batches for the Homeosys measured-control ladder.

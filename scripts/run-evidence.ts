@@ -25,12 +25,12 @@ import {
   validateEvidenceMatrix,
   type EvidenceMilestone,
 } from "../src/sim/evidence-matrix.ts";
+import { evidenceDirPair, resolveEvidenceOutDir } from "./evidence-out-guard.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, "..");
 
-const committedEvidenceDir = join(repoRoot, "evidence");
-const smokeEvidenceDir = join(committedEvidenceDir, "_smoke");
+const { evidenceRoot: committedEvidenceDir, smokeRoot: smokeEvidenceDir } = evidenceDirPair(repoRoot);
 
 function parseArgs(argv: string[]) {
   let n: number | undefined;
@@ -53,17 +53,20 @@ function parseArgs(argv: string[]) {
     } else if (a === "--help" || a === "-h") {
       console.log(
         "Usage: tsx scripts/run-evidence.ts [--n N] [--out DIR] [--milestones m2,m3,m4,m5] [--write|--commit-artifacts] [--no-csv]\n" +
-          "Default out: evidence/_smoke (gitignored). Use --write to refresh committed evidence/{m2..m5}.",
+          "Default out: evidence/_smoke (gitignored). Use --write to refresh committed evidence/{m2..m5}. Subpaths like evidence/m2 also require --write.",
       );
       process.exit(0);
     }
   }
-  if (outDir === undefined) {
-    outDir = writeCommitted ? committedEvidenceDir : smokeEvidenceDir;
-  } else if (resolve(outDir) === resolve(committedEvidenceDir) && !writeCommitted) {
-    console.error(
-      "Refusing to write committed evidence/ without --write / --commit-artifacts (default is evidence/_smoke).",
-    );
+  try {
+    outDir = resolveEvidenceOutDir({
+      outDir,
+      writeCommitted,
+      evidenceRoot: committedEvidenceDir,
+      smokeRoot: smokeEvidenceDir,
+    });
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : err);
     process.exit(2);
   }
   return { n, outDir, milestones, csv, writeCommitted };
