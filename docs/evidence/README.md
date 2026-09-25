@@ -8,6 +8,8 @@ scientific closure of M2–M5.
 
 ## Critical caveats
 
+**Write guard:** `npm run evidence` / smoke defaults to `evidence/_smoke/` (gitignored); use `--write` (or `--commit-artifacts`) to refresh committed `evidence/{m2..m5}`.
+
 - **Engineering scaffolding ≠ scientific closure.** These arms do **not** close
   M2–M5 (or Steps 3–5) as scientific claims. Prefer distributions and
   predeclared metrics over cherry-picked trajectories.
@@ -41,8 +43,8 @@ list is extended on purpose.
 
 Default N = 10 (`EVIDENCE_DEFAULT_N`). Smoke / CI may pass `--n 2`.
 
-**Note:** P3 smoke can rewrite files under `evidence/` (Developer fixing). Treat
-checked-in artifacts as observational snapshots until that path is hardened.
+**Note:** Committed `evidence/{m2..m5}` snapshots are observational; smoke/default
+CLI writes only `evidence/_smoke/` unless `--write` is passed.
 
 ## Reproduce
 
@@ -50,14 +52,13 @@ From the research worktree (`/workspace/repos/homeosys-research` or a clone of
 `homeosys` at the shipped SHA):
 
 ```bash
-npm run evidence
-# or with smoke N:
+npm run evidence                 # smoke → evidence/_smoke/ (gitignored)
 npm run evidence -- --n 2
-# subset:
 npm run evidence -- --milestones m2,m4 --n 10
+npm run evidence -- --write      # refresh committed evidence/{m2..m5}
 ```
 
-Artifacts land under `evidence/m2/` … `evidence/m5/`:
+Smoke artifacts land under `evidence/_smoke/`. Committed ladder artifacts (`evidence/m2/` … `evidence/m5/`) only with `--write`:
 
 - `*.jsonl` — first line is `# {protocol metadata JSON}`; following lines are
   `ResearchRunSummary` objects (includes UltraEpisodeLog aggregate fields).
