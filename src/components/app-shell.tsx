@@ -438,7 +438,7 @@ export function AppShell() {
         <div className="min-w-0">
           <h1 className="text-lg font-medium tracking-tight text-fg sm:text-xl">Homeostat</h1>
           <p className="text-xs text-muted sm:text-sm">
-            Cybernetic Game of Life · space to run · paint on the field
+            Cybernetic cellular automaton · space to run · paint on the field
           </p>
         </div>
         <div className="hidden shrink-0 text-right sm:block">

@@ -17,7 +17,7 @@ export const Route = createRootRoute({
       {
         name: "description",
         content:
-          "A self-regulating Game of Life. Heat, energy, and season shape the cells; cybernetic feedback rewrites the rules when the field starts to fail.",
+          "A self-regulating cellular automaton. Heat, energy, and season shape occupancy; cybernetic feedback rewrites the rules when the field starts to fail.",
       },
     ],
     links: [
