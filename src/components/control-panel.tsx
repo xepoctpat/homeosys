@@ -730,8 +730,8 @@ export function ControlPanel(props: ControlPanelProps) {
                 onCheckedChange={(v) => onSettings({ varietyEnabled: v })}
               />
               <ToggleRow
-                label="Protect established life"
-                description="Long-lived clusters are harder to kill."
+                label="Protect long-lived clusters"
+                description="High-tenure clusters resist culls. Not autopoiesis — a local persistence bias."
                 checked={settings.autoEnabled}
                 onCheckedChange={(v) => onSettings({ autoEnabled: v })}
               />

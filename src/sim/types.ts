@@ -201,7 +201,7 @@ export const LOOP_META: { id: LoopId; label: string }[] = [
   { id: "variety", label: "Variety" },
   { id: "metabolism", label: "Metabolism" },
   { id: "season", label: "Season" },
-  { id: "autopoiesis", label: "Autopoiesis" },
+  { id: "autopoiesis", label: "Cluster hold" },
   { id: "observer", label: "Observer" },
 ];
 
@@ -237,7 +237,7 @@ export const PRESETS: {
   {
     id: "homeostat",
     name: "Homeostat",
-    blurb: "Full feedback. The field keeps itself alive.",
+    blurb: "Full feedback loops on. Controllers try to keep density viable.",
     settings: { ...DEFAULT_SETTINGS },
   },
   {
@@ -252,7 +252,7 @@ export const PRESETS: {
   {
     id: "ice",
     name: "Ice line",
-    blurb: "A moving temperate band. Life follows the thaw.",
+    blurb: "A moving temperate band. Activity follows the thaw.",
     settings: {
       environment: true,
       cybernetics: true,
