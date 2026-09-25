@@ -21,11 +21,13 @@ import {
   PROVISIONAL_SCHEDULE,
   STUDY_CONDITIONS,
   type DisturbanceScheduleId,
+  type Metrics,
   type PaintMode,
   type PresetId,
   type SimSettings,
   type StudyConditionId,
 } from "@/sim/types";
+import { disturbanceWindowCopy } from "@/sim/disturbance-window";
 
 type TabId = "run" | "paint" | "world" | "loops";
 
@@ -57,6 +59,7 @@ interface ControlPanelProps {
   onSeedLocked: (locked: boolean) => void;
   studyCondition: StudyConditionId | null;
   onStudyCondition: (id: StudyConditionId) => void;
+  metrics: Metrics | null;
 }
 
 function Row({
@@ -179,6 +182,7 @@ const PAINT_HINT: Record<PaintMode, string> = {
   energy: "Feed the soil so nearby life can last.",
 };
 
+
 export function ControlPanel(props: ControlPanelProps) {
   const {
     running,
@@ -208,6 +212,7 @@ export function ControlPanel(props: ControlPanelProps) {
     onSeedLocked,
     studyCondition,
     onStudyCondition,
+    metrics,
   } = props;
 
   const [tab, setTab] = useState<TabId>("run");
@@ -267,13 +272,17 @@ export function ControlPanel(props: ControlPanelProps) {
               Compare three recorded setting packs over the same world pattern: baseline
               (fixed B3/S23), homeostatic feedback, and ultrastable adaptation. Explore
               freely here; controlled comparisons should keep seed, disturbance, and
-              generation limit fixed. Metrics are observations, not proof of cognition.
+              generation limit fixed. Switching a study pack reseeds the field and resets
+              generation to 0 (seed key reused when locked). Metrics are observations, not
+              proof of cognition.
             </GuidanceCard>
             <div>
               <div className="mb-2 text-sm text-fg">Study conditions</div>
               <p className="mb-2 text-xs leading-relaxed text-subtle">
                 Loop/env packs for the three-condition table. They do not rewrite the
-                disturbance schedule; World owns w(t).
+                disturbance schedule; World owns w(t). Switching packs reseeds and resets
+                Gen to 0 (same seed key when locked). Baseline turns auto target density
+                off so unregulated dynamics stay unregulated.
               </p>
               <div className="flex flex-wrap gap-2">
                 {STUDY_CONDITIONS.map((c) => {
@@ -513,7 +522,15 @@ export function ControlPanel(props: ControlPanelProps) {
               <div className="text-sm text-fg">Disturbance schedule</div>
               <p className="text-xs leading-relaxed text-subtle">
                 Named w(t) applied identically for every study pack. Provisional knobs —
-                observational only. Does not change loop flags.
+                observational only. Does not change loop flags. Sustained duration=0 means
+                open-ended from startGen.
+              </p>
+              <p className="text-xs leading-relaxed text-muted font-mono">
+                {disturbanceWindowCopy(
+                  settings.disturbance,
+                  metrics?.generation,
+                  metrics?.w,
+                )}
               </p>
               <div className="flex flex-wrap gap-2">
                 {(
@@ -696,7 +713,11 @@ export function ControlPanel(props: ControlPanelProps) {
             </Row>
             <ToggleRow
               label="Auto target density"
-              description="The target density tracks what this world can actually hold."
+              description={
+                studyCondition === "baseline"
+                  ? "Off under Baseline — observes unregulated dynamics; setpoint does not auto-track."
+                  : "The target density tracks what this world can actually hold. Baseline study pack leaves this off."
+              }
               checked={settings.autoSetpoint}
               onCheckedChange={(v) => onSettings({ autoSetpoint: v })}
             />

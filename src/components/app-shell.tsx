@@ -388,6 +388,7 @@ export function AppShell() {
             onSeedLocked={setSeedLocked}
             studyCondition={studyCondition}
             onStudyCondition={applyStudyCondition}
+            metrics={metrics}
           />
         </aside>
       </div>

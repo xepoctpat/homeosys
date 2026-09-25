@@ -330,10 +330,11 @@ export const STUDY_CONDITIONS: {
   {
     id: "baseline",
     name: "Baseline",
-    blurb: "Fixed B3/S23. Environment and feedback off. Observe unregulated dynamics.",
+    blurb: "Fixed B3/S23. Environment and feedback off; auto target density off. Observes unregulated dynamics.",
     settings: {
       environment: false,
       cybernetics: false,
+      autoSetpoint: false,
       ultraEnabled: false,
       varietyEnabled: false,
       autoEnabled: false,

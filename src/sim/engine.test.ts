@@ -126,6 +126,7 @@ test("study condition packs match the three-condition table", () => {
   const byId = Object.fromEntries(STUDY_CONDITIONS.map((c) => [c.id, c]));
   assert.equal(byId.baseline.settings.environment, false);
   assert.equal(byId.baseline.settings.cybernetics, false);
+  assert.equal(byId.baseline.settings.autoSetpoint, false);
   assert.equal(byId.baseline.settings.ultraEnabled, false);
 
   assert.equal(byId.homeostatic.settings.cybernetics, true);
