@@ -1,18 +1,23 @@
 # Evidence ladder (M2–M5)
 
-Headless observational batches for the Homeosys measured-control ladder.
+Headless **observational** batches for the Homeosys measured-control ladder.
+
+**Stamp (observational):** ladder exports shipped with Reviewer **CONDITIONAL PASS**
+@ `0ac0d88`. This documents reproducible protocol + export wiring — **not**
+scientific closure of M2–M5.
 
 ## Critical caveats
 
-- **Engineering scaffolding ≠ scientific closure.** Shipping these arms documents
-  reproducible protocol + export wiring; it does **not** close Steps 3–5 as
-  scientific claims.
+- **Engineering scaffolding ≠ scientific closure.** These arms do **not** close
+  M2–M5 (or Steps 3–5) as scientific claims. Prefer distributions and
+  predeclared metrics over cherry-picked trajectories.
+- **M6 remains hard-gated.** Do not add autopoiesis engineering or claims here.
 - **Provisional K** (`PROVISIONAL_K` / `densityMin`–`densityMax`) is unchanged.
   Bounds are lab defaults, not calibrated.
-- **No life / autopoiesis / cognition claims.** Pattern persistence ≠ organism.
-  M6 remains gated — do not add autopoiesis engineering here.
-- Results are **observational summaries** across a fixed seed list. Prefer
-  distributions and predeclared metrics over cherry-picked trajectories.
+- **No life / cognition / consciousness claims.** Pattern persistence ≠ organism.
+  User-facing copy must not market “Game of Life”; technical prose may name
+  Conway’s Game of Life only as the cellular-automaton **substrate algorithm**.
+- Results are **observational summaries** across a fixed seed list.
 
 ## Arms
 
@@ -36,6 +41,9 @@ list is extended on purpose.
 
 Default N = 10 (`EVIDENCE_DEFAULT_N`). Smoke / CI may pass `--n 2`.
 
+**Note:** P3 smoke can rewrite files under `evidence/` (Developer fixing). Treat
+checked-in artifacts as observational snapshots until that path is hardened.
+
 ## Reproduce
 
 From the research worktree (`/workspace/repos/homeosys-research` or a clone of
@@ -56,17 +64,8 @@ Artifacts land under `evidence/m2/` … `evidence/m5/`:
 - `*.csv` — flat summaries (optional; disable with `--no-csv`).
 - per-folder `README.md` snippets + top-level `evidence/README.md`.
 
-Typecheck / tests:
+## Out of scope
 
-```bash
-npm run typecheck
-npm test
-# matrix unit + smoke (included in npm test once wired):
-tsx --test src/sim/evidence-matrix.test.ts
-```
-
-## What this is not
-
-- Not a claim that homeostasis / ultrastability / VSM hierarchy are “proven.”
 - Not M6 autopoiesis work (hard-gated).
-- Not a substitute for multi-seed analysis beyond the committed seed list.
+- Not marketing “Game of Life” product framing.
+- Not scientific closure of M2–M5.
