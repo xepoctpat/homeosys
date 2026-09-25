@@ -13,7 +13,7 @@
 - Exploratory play ≠ controlled evidence (need locked seed, K, schedule).
 - StudyConditionPack must not redefine world/disturbance; World must not redefine loops.
 - **Current experimental target stamp:** Steps **1–2** until evidence moves it.
-- **Engineering stamp (observational):** eng through **M5 organization scaffolding** is present; **evidence ladder M2–M5 shipped** with Reviewer **CONDITIONAL PASS** @ `0ac0d88` (`npm run evidence`, `evidence/m2`…`m5`). **Evidence-harden A–D tip @ `4d8f43c`:** A env-no-control + m2 arm; B calibrated observational K; C dual grid 48×36/72×54 + 20 explicit seeds; D `m5-coord-ablated`. Fixed `EVIDENCE_SEED_KEYS` (N=20). **Evidence-first work is in progress** — eng scaffolding ≠ scientific closure; Steps 3–5 / M2–M5 remain observational. **M6 HARD-GATED**. **Characterization→engine lock (captain ACCEPTED 2026-09-25):** C1–C3 before E1 eng; M2-only characterization first; θ v0 + env knobs in protocol; `schemaVersion` + full θ on evidence exports before sweeps; first sweep axes = ladder factors only (condition/controller/org/α/schedule), not continuous gains; no multi-system/meta-dynamics/UI theater; observational ≠ closure. **Write guard:** smoke defaults to `evidence/_smoke/` (gitignored); **subpath refuse** under `evidence/{m2..m5}` without `--write` (P3 PASS tip @ `9f8c290`; initial guard @ `63fa427`). Occupancy/CA UI language; Game of Life is not a product brand.
+- **Engineering stamp (observational):** eng through **M5 organization scaffolding** is present; **evidence ladder M2–M5 shipped** with Reviewer **CONDITIONAL PASS** @ `0ac0d88` (`npm run evidence`, `evidence/m2`…`m5`). **Evidence-harden A–D tip @ `4d8f43c`:** A env-no-control + m2 arm; B calibrated observational K; C dual grid 48×36/72×54 + 20 explicit seeds; D `m5-coord-ablated`. Fixed `EVIDENCE_SEED_KEYS` (N=20). **Evidence-first work is in progress** — eng scaffolding ≠ scientific closure; Steps 3–5 / M2–M5 remain observational. **M6 HARD-GATED**. **Characterization→engine lock (captain ACCEPTED 2026-09-25):** C1–C3 before E1 eng; M2-only characterization first; θ v0 + env knobs in protocol; `schemaVersion` + full θ on evidence exports before sweeps; first sweep axes = ladder factors only (condition/controller/org/α/schedule), not continuous gains; no multi-system/meta-dynamics/UI theater; observational ≠ closure. **C1 landed @ `44cfaf9`** (ThetaV0 + golden replay; evidence JSONL embeds `theta.v0`); **next C2**. **Write guard:** smoke defaults to `evidence/_smoke/` (gitignored); **subpath refuse** under `evidence/{m2..m5}` without `--write` (P3 PASS tip @ `9f8c290`; initial guard @ `63fa427`). Occupancy/CA UI language; Game of Life is not a product brand.
 
 ## Long-horizon milestones
 
@@ -36,7 +36,7 @@
 5. **M4 controller modes** (SetpointError vs ViabilityBand) — **done** `56e3730` (modes only; not a closed evidence claim)
 6. **M5 eng scaffolding** (Central/Local/Coordinated + interventionRate) — shipped on research track; **not** a closed evidence claim
 7. **Evidence ladder M2–M5** — observational exports shipped @ `0ac0d88` (CONDITIONAL PASS); **≠ scientific closure**. **Evidence-harden A–D tip @ `4d8f43c`**. **Write guard** smoke → `_smoke`; **subpath refuse** @ `9f8c290`. **Next (captain ACCEPTED):** characterization→engine path — **not** eng theater; **do not start M6 autopoiesis**
-8. **Characterization→engine (locked)** — see section below; C1 done (ThetaV0 + golden replay)
+8. **Characterization→engine (locked)** — see section below; **C1 done @ `44cfaf9`** (ThetaV0 + golden replay; evidence JSONL embeds `theta.v0`); **next C2**
 
 ## Characterization → engine lock (captain ACCEPTED 2026-09-25)
 
@@ -48,7 +48,7 @@ Authoritative sequencing lock (anti-drift):
 4. **First sweep axes = ladder factors only** — condition / controller / org / α / schedule. **Not** continuous controller gains on the first sweep.
 5. **M6 HARD-GATED** — no multi-system / meta-dynamics / UI theater. **Observational ≠ closure**.
 
-**Done:** C1 — ThetaV0 + golden replay (Developer). Next: C2 export-hardening / C3 as locked.
+**Done:** C1 @ `44cfaf9` — ThetaV0 + golden replay; evidence JSONL embeds `theta.v0` (Developer). **Next: C2.** C3 as locked. Observational ≠ closure; **M6 HARD-GATED**.
 
 ## Component ownership (Architect)
 
@@ -91,5 +91,6 @@ E. Stamp current target Steps 1–2 — applied
 | 2026-09-25 | Developer | Harden write-guard for committed evidence subpaths | Done P3 PASS tip `9f8c290` |
 | 2026-09-25 | Editor | Nav/evidence stamp nit: cite subpath refuse @ `9f8c290` | Done `2504db5` |
 | 2026-09-25 | Captain | ACCEPTED characterization→engine lock (C1–C3 before E1; M2-first; θ/schema; ladder-factor sweeps; M6 hard-gated) | Locked |
-| 2026-09-25 | Developer | C1 ThetaV0 + golden replay | Done (this commit) |
-| 2026-09-25 | Editor | Fold characterization→engine lock into navigation-plan + README checkpoint | Done (this commit) |
+| 2026-09-25 | Developer | C1 ThetaV0 + golden replay | Done `44cfaf9` |
+| 2026-09-25 | Editor | Fold characterization→engine lock into navigation-plan + README checkpoint | Done `26a4051` |
+| 2026-09-25 | Editor | README + nav checkpoint after C1 landing (C1 done; C2 next) | Done (this commit) |
