@@ -23,8 +23,12 @@ The first study sequence is **homeostasis → ultrastability → viability**:
 3. Test whether slower rule adaptation improves recovery under changing
    disturbances.
 4. Compare strict setpoint regulation with safe-region viability control.
-5. Extend toward distributed control, autopoiesis, and complex adaptive
-   behavior only after the core mechanisms are measured.
+5. Compare centralized, local, and coordinated control (hierarchy and
+   autonomy).
+6. Autopoietic extension only after step 5 is characterized (hard gate 5→6).
+7. Complex adaptive analysis only after the step 6 gate (hard gate 6→7).
+
+Current experimental target: steps **1–2** until evidence moves it.
 
 The project uses “autopoiesis,” “viable system,” “cognition,” and “life” as
 carefully bounded research hypotheses, not as assumptions about persistent

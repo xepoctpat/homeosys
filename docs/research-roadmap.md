@@ -35,8 +35,10 @@ biological equivalence, or strict autopoiesis.
 Homeostat has two simultaneous scopes:
 
 - The **application scope** stays broad. It can expose homeostasis,
-  ultrastability, viability, distributed control, autopoiesis, and complex
-  adaptive behavior as an evolving research platform.
+  ultrastability, viability, and distributed control as an evolving research
+  platform. Autopoiesis and complex adaptive behavior remain labeled future
+  research hypotheses until their gates are met; the platform must not present
+  them as implemented capabilities.
 - The **study scope** stays narrow. Each experiment activates a defined subset
   of mechanisms, locks the rest, and changes one causal factor at a time.
 
@@ -47,6 +49,10 @@ Every capability should be labeled as one of:
 3. **Future research hypothesis** — a capability requiring new state or
    observables before it can be evaluated.
 4. **Conceptual inspiration** — theory that guides design but is not evidence.
+
+**Current experimental target:** Research sequence steps **1–2**
+(validation/baseline and homeostatic regulation), until evidence moves the
+stamp forward.
 
 The governing rule is **broad in architecture, narrow in evidence**. Exploratory
 play can remain open-ended, but a controlled study must record its condition,
@@ -143,15 +149,17 @@ performance cost of removing each organizational layer.
 
 ### 6. Autopoietic extension
 
-Only after the control experiments are characterized, add explicit components,
-resource production, boundary formation, and boundary repair. Persistence of a
-pattern alone is not evidence of autopoiesis.
+**Hard gate (5→6):** Begin only after step 5 (hierarchy and autonomy) is
+characterized with predeclared metrics. Then add explicit components, resource
+production, boundary formation, and boundary repair. Persistence of a pattern
+alone is not evidence of autopoiesis.
 
 ### 7. Complex adaptive behavior
 
-Analyze cluster lifetimes, spatial correlation, policy diversity, damage
-spreading, path dependence, basin structure, and transitions between emergent
-regimes. Do not infer criticality from a single power law or spectrum.
+**Hard gate (6→7):** Begin only after the step 6 gate is met. Analyze
+cluster lifetimes, spatial correlation, policy diversity, damage spreading,
+path dependence, basin structure, and transitions between emergent regimes. Do
+not infer criticality from a single power law or spectrum.
 
 ## Experimental conditions
 
@@ -162,7 +170,10 @@ At minimum, compare:
 3. Feedback homeostasis.
 4. Fast feedback plus slower ultrastable adaptation.
 5. Distributed or hierarchical control.
-6. A future production-and-boundary model for autopoiesis.
+
+**Deferred until gate:** A production-and-boundary model for autopoiesis is not
+part of the minimum comparison set. It belongs under Research sequence step 6
+and may be added only after the 5→6 hard gate.
 
 Use pulse, sustained, random, spatially correlated, resource-depletion, and
 rule/environment-shift disturbances. Use identical schedules across controller
