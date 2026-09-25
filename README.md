@@ -72,7 +72,8 @@ hypotheses — not claims about persistent patterns.
   - **C** — dual grids `48×36` / `72×54` + fixed **20** explicit seeds (`1412a5e`)
   - **D** — `m5-coord-ablated` (Coordinated α=0 coupling ablation) (`4d8f43c`)
 - **Observational evidence ≠ scientific closure of M2–M5**
-- **M6 remains hard-gated**
+- **M6 remains HARD-GATED**
+- **Characterization→engine lock (captain ACCEPTED):** C1–C3 before E1; M2-only characterization first; θ v0 + env knobs in protocol; `schemaVersion` + full θ on exports before sweeps; first sweep axes = ladder factors only (condition/controller/org/α/schedule), not continuous gains; no multi-system/meta-dynamics/UI theater. C1 in flight (ThetaV0 + golden replay). See [`docs/navigation-plan.md`](docs/navigation-plan.md).
 
 ## Docs
 
