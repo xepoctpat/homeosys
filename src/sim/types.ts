@@ -114,9 +114,12 @@ export const ORGANIZATION_MODES: {
     id: "Coordinated",
     label: "Coordinated",
     blurb:
-      "Partition-local actuation with limited coupling: applied error mixes local and mean neighbor errors (α≈0.3). Not a VSM claim.",
+      "Partition-local actuation with limited coupling: applied error mixes local and mean neighbor errors (α=coordCouplingAlpha, default 0.3). α=0 ablates coupling (bandwidth→0). VSM remains a hypothesis — not a claim.",
   },
 ];
+
+/** Default Coordinated coupling α (matches historical engine constant). */
+export const DEFAULT_COORD_COUPLING_ALPHA = 0.3;
 
 const ORGANIZATION_MODE_IDS: OrganizationMode[] = ["Central", "Local", "Coordinated"];
 
@@ -301,6 +304,12 @@ export interface SimSettings {
    * ResearchMode lock / A/B/C presets own the three-way pairing. Not a VSM claim.
    */
   organizationMode: OrganizationMode;
+  /**
+   * Coordinated-mode neighbor error coupling weight α ∈ [0, 1].
+   * appliedErr = (1−α)·local + α·mean(neighbors). Ignored unless organizationMode=Coordinated.
+   * Default 0.3; α=0 is the M5 coupling ablation (observational; VSM is a hypothesis only).
+   */
+  coordCouplingAlpha: number;
   ultraEnabled: boolean;
   varietyEnabled: boolean;
   autoEnabled: boolean;
@@ -344,6 +353,7 @@ export const DEFAULT_SETTINGS: SimSettings = {
   setpoint: 0.16,
   controllerMode: "SetpointError",
   organizationMode: "Central",
+  coordCouplingAlpha: DEFAULT_COORD_COUPLING_ALPHA,
   ultraEnabled: true,
   varietyEnabled: true,
   autoEnabled: true,
@@ -365,6 +375,10 @@ export function normalizeSimSettings(raw: unknown): SimSettings {
     controllerMode: normalizeControllerMode(r.controllerMode ?? DEFAULT_SETTINGS.controllerMode),
     organizationMode: normalizeOrganizationMode(
       r.organizationMode ?? DEFAULT_SETTINGS.organizationMode,
+    ),
+    coordCouplingAlpha: Math.max(
+      0,
+      Math.min(1, finiteNumber(r.coordCouplingAlpha, DEFAULT_SETTINGS.coordCouplingAlpha)),
     ),
     densityMin: finiteNumber(r.densityMin, DEFAULT_SETTINGS.densityMin),
     densityMax: finiteNumber(r.densityMax, DEFAULT_SETTINGS.densityMax),

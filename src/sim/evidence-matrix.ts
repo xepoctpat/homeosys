@@ -104,9 +104,11 @@ export type EvidenceArmId =
   | "m5-central"
   | "m5-local"
   | "m5-coordinated"
+  | "m5-coord-ablated"
   | "m5-central-72x54"
   | "m5-local-72x54"
-  | "m5-coordinated-72x54";
+  | "m5-coordinated-72x54"
+  | "m5-coord-ablated-72x54";
 
 export interface EvidenceArm {
   id: EvidenceArmId;
@@ -131,6 +133,7 @@ function baseWorld(over: {
   rows?: number;
   controllerMode?: ResearchProtocol["controllerMode"];
   organizationMode?: ResearchProtocol["organizationMode"];
+  coordCouplingAlpha?: number;
 }): Omit<ResearchProtocol, "seedKey" | "repeats"> {
   const validated = validateProtocol({
     seedKey: EVIDENCE_SEED_KEYS[0],
@@ -144,6 +147,7 @@ function baseWorld(over: {
     repeats: 1,
     controllerMode: over.controllerMode ?? "SetpointError",
     organizationMode: over.organizationMode ?? "Central",
+    coordCouplingAlpha: over.coordCouplingAlpha,
   });
   if (!validated.ok) throw new Error(validated.error);
   const { seedKey: _s, repeats: _r, ...rest } = validated.protocol;
@@ -265,6 +269,13 @@ export function buildEvidenceArms(): EvidenceArm[] {
       repeats: 1,
     };
     const { central, local, coordinated } = abcOrganizationProtocols(m5Base);
+    // Coupling ablation: Coordinated with α=0 (bandwidth→0). VSM = hypothesis only.
+    const ablated = validateProtocol({
+      ...m5Base,
+      organizationMode: "Coordinated",
+      coordCouplingAlpha: 0,
+    });
+    if (!ablated.ok) throw new Error(ablated.error);
     arms.push(
       {
         id: armId("m5-central", grid),
@@ -284,8 +295,15 @@ export function buildEvidenceArms(): EvidenceArm[] {
         id: armId("m5-coordinated", grid),
         milestone: "m5",
         label: `M5 Coordinated organization ${grid.id}`,
-        factor: `organizationMode=Coordinated;${gridFactor(grid)}`,
+        factor: `organizationMode=Coordinated;coordCouplingAlpha=0.3;${gridFactor(grid)}`,
         protocolTemplate: strip(coordinated),
+      },
+      {
+        id: armId("m5-coord-ablated", grid),
+        milestone: "m5",
+        label: `M5 Coordinated coupling ablated (α=0) ${grid.id}`,
+        factor: `organizationMode=Coordinated;coordCouplingAlpha=0;${gridFactor(grid)}`,
+        protocolTemplate: strip(ablated.protocol),
       },
     );
   }
@@ -402,7 +420,7 @@ export function validateEvidenceMatrix(): { ok: true; arms: EvidenceArm[] } | { 
   try {
     const arms = buildEvidenceArms();
     // 10 contrast families × ≥2 grids
-    if (arms.length < 20) return { ok: false, error: `expected ≥20 arms, got ${arms.length}` };
+    if (arms.length < 22) return { ok: false, error: `expected ≥22 arms, got ${arms.length}` };
     if (EVIDENCE_GRIDS.length < 2) return { ok: false, error: "expected ≥2 evidence grids" };
     const ids = new Set(arms.map((a) => a.id));
     if (ids.size !== arms.length) return { ok: false, error: "duplicate arm ids" };
@@ -441,8 +459,19 @@ export function validateEvidenceMatrix(): { ok: true; arms: EvidenceArm[] } | { 
       const m5 = arms.filter(
         (a) => a.milestone === "m5" && a.protocolTemplate.cols === grid.cols && a.protocolTemplate.rows === grid.rows,
       );
+      if (m5.length !== 4) return { ok: false, error: `M5 must have 4 arms at ${grid.id}` };
       const org = new Set(m5.map((a) => a.protocolTemplate.organizationMode));
       if (org.size !== 3) return { ok: false, error: `M5 must cover Central|Local|Coordinated at ${grid.id}` };
+      const ablated = m5.find((a) => a.id.includes("coord-ablated"));
+      if (!ablated || ablated.protocolTemplate.coordCouplingAlpha !== 0) {
+        return { ok: false, error: `M5 coupling ablation arm missing or α≠0 at ${grid.id}` };
+      }
+      const coordinated = m5.find(
+        (a) => a.id === (grid.id === "48x36" ? "m5-coordinated" : `m5-coordinated-${grid.id}`),
+      );
+      if (!coordinated || coordinated.protocolTemplate.coordCouplingAlpha !== 0.3) {
+        return { ok: false, error: `M5 coordinated default α≠0.3 at ${grid.id}` };
+      }
     }
     return { ok: true, arms };
   } catch (e) {

@@ -33,6 +33,7 @@ function baseProtocol(over: Partial<ResearchProtocol> = {}): ResearchProtocol {
     repeats: 3,
     controllerMode: "SetpointError",
     organizationMode: "Central",
+    coordCouplingAlpha: 0.3,
     ...over,
   };
 }

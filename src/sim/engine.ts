@@ -859,9 +859,10 @@ export class SimEngine {
    *
    * Coordinated coupling rule (scaffolding — not a VSM claim):
    *   appliedErr_i = (1 − α) · localErr_i + α · mean(localErr of 4-adjacent tiles)
-   * with α = COORD_COUPLING_ALPHA (0.3). Neighbor tiles on opposite edges wrap
-   * in partition index space. Actuation remains confined to tile i; only the
-   * error signal couples. Local mode uses α = 0 (no coupling).
+   * with α = settings.coordCouplingAlpha (default COORD_COUPLING_ALPHA=0.3).
+   * Neighbor tiles on opposite edges wrap in partition index space. Actuation
+   * remains confined to tile i; only the error signal couples. Local mode and
+   * Coordinated with α=0 use no coupling (M5 ablation). Not a VSM claim.
    */
   private runHomeostasisPartitioned(gain: number, coordinated: boolean): void {
     this.ensurePartitionLayout();
@@ -892,15 +893,22 @@ export class SimEngine {
         const p = ty * px + tx;
         let err = localErrs[p];
         if (coordinated) {
-          // 4-neighbor mean in partition index space (wrap).
-          const nErr =
-            (localErrs[ty * px + ((tx - 1 + px) % px)] +
-              localErrs[ty * px + ((tx + 1) % px)] +
-              localErrs[((ty - 1 + py) % py) * px + tx] +
-              localErrs[((ty + 1) % py) * px + tx]) /
-            4;
-          if (Math.abs(nErr) > 1e-9) couplingActive++;
-          err = (1 - COORD_COUPLING_ALPHA) * err + COORD_COUPLING_ALPHA * nErr;
+          const alpha = Math.max(
+            0,
+            Math.min(1, this.settings.coordCouplingAlpha ?? COORD_COUPLING_ALPHA),
+          );
+          if (alpha > 0) {
+            // 4-neighbor mean in partition index space (wrap).
+            const nErr =
+              (localErrs[ty * px + ((tx - 1 + px) % px)] +
+                localErrs[ty * px + ((tx + 1) % px)] +
+                localErrs[((ty - 1 + py) % py) * px + tx] +
+                localErrs[((ty + 1) % py) * px + tx]) /
+              4;
+            if (Math.abs(nErr) > 1e-9) couplingActive++;
+            err = (1 - alpha) * err + alpha * nErr;
+          }
+          // α=0: coupling ablated — Local-equivalent error, bandwidth proxy stays 0.
         }
 
         if (this.settings.controllerMode === "ViabilityBand" && Math.abs(err) < 1e-9) {

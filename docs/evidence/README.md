@@ -31,7 +31,7 @@ scientific closure of M2–M5.
 | **M2** homeostasis | `m2-baseline`, `m2-env-no-control`, `m2-homeostatic` (+ `-72x54`) | pulse@40/30 a=0.55, limit=200, SetpointError+Central, homeostat | studyCondition baseline vs envNoControl vs homeostatic |
 | **M3** ultrastability | `m3-homeostatic`, `m3-ultrastable` (+ `-72x54`) | sustained@30/120 a=0.55, limit=200 | studyCondition homeostatic vs ultrastable; UltraEpisodeLog aggregates in each summary |
 | **M4** controller | `m4-setpoint`, `m4-viability` (+ `-72x54`) | `abControllerProtocols` shared schedule | controllerMode SetpointError vs ViabilityBand |
-| **M5** organization | `m5-central`, `m5-local`, `m5-coordinated` (+ `-72x54`) | `abcOrganizationProtocols` shared schedule | organizationMode Central \| Local \| Coordinated |
+| **M5** organization | `m5-central`, `m5-local`, `m5-coordinated`, `m5-coord-ablated` (+ `-72x54`) | `abcOrganizationProtocols` shared schedule; ablated = Coordinated α=0 | organizationMode Central \| Local \| Coordinated (+ coupling ablation α=0). VSM = hypothesis only |
 
 Each contrast family is run on **two grids**: `48×36` (canonical arm ids) and `72×54` (arm id suffix `-72x54`).
 

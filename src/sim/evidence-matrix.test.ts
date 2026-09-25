@@ -16,7 +16,7 @@ test("validateEvidenceMatrix accepts all M2–M5 arms across grids", () => {
   const v = validateEvidenceMatrix();
   assert.equal(v.ok, true);
   if (!v.ok) return;
-  assert.equal(v.arms.length, 20);
+  assert.equal(v.arms.length, 22);
   assert.ok(EVIDENCE_GRIDS.length >= 2);
   assert.equal(EVIDENCE_SEED_KEYS.length, EVIDENCE_DEFAULT_N);
   assert.equal(EVIDENCE_DEFAULT_N, 20);
@@ -66,7 +66,7 @@ test("M3 arms share sustained schedule and expose ultra fields after smoke run",
   assert.ok("lastUltraDeltaPop" in row);
 });
 
-test("M4 reuses abControllerProtocols contrast; M5 reuses abcOrganizationProtocols", () => {
+test("M4 reuses abControllerProtocols contrast; M5 covers org modes plus coupling ablation", () => {
   const m4 = buildEvidenceArms().filter((a) => a.milestone === "m4");
   assert.equal(m4.length, 4);
   assert.deepEqual(
@@ -74,11 +74,17 @@ test("M4 reuses abControllerProtocols contrast; M5 reuses abcOrganizationProtoco
     ["SetpointError", "ViabilityBand"],
   );
   const m5 = buildEvidenceArms().filter((a) => a.milestone === "m5");
-  assert.equal(m5.length, 6);
+  assert.equal(m5.length, 8);
   assert.deepEqual(
     [...new Set(m5.map((a) => a.protocolTemplate.organizationMode))].sort(),
     ["Central", "Coordinated", "Local"],
   );
+  const ablated = m5.filter((a) => a.id.includes("coord-ablated"));
+  assert.equal(ablated.length, 2);
+  for (const a of ablated) {
+    assert.equal(a.protocolTemplate.organizationMode, "Coordinated");
+    assert.equal(a.protocolTemplate.coordCouplingAlpha, 0);
+  }
 });
 
 test("resolveSeedKeys is a fixed prefix of EVIDENCE_SEED_KEYS", () => {

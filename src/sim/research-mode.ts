@@ -1,6 +1,7 @@
 import { SimEngine } from "./engine.ts";
 import {
   DEFAULT_SETTINGS,
+  DEFAULT_COORD_COUPLING_ALPHA,
   STUDY_CONDITIONS,
   normalizeControllerMode,
   normalizeDisturbance,
@@ -44,6 +45,11 @@ export interface ResearchProtocol {
   controllerMode: ControllerMode;
   /** Organization / autonomy mode (M5 A/B/C factor). Scaffolding — not a VSM claim. */
   organizationMode: OrganizationMode;
+  /**
+   * Coordinated coupling α (default 0.3). Set 0 for M5 coupling ablation.
+   * Ignored unless organizationMode=Coordinated. VSM remains a hypothesis only.
+   */
+  coordCouplingAlpha: number;
 }
 
 /** Per-generation sample at a measurement tick (optional, cheap JSONL). */
@@ -71,6 +77,7 @@ export interface ResearchRunSummary {
   studyCondition: StudyConditionId;
   controllerMode: ControllerMode;
   organizationMode: OrganizationMode;
+  coordCouplingAlpha: number;
   scheduleId: DisturbanceSchedule["id"];
   scheduleStartGen: number;
   scheduleDuration: number;
@@ -123,6 +130,7 @@ export function settingsFromProtocol(protocol: ResearchProtocol): SimSettings {
     measurementInterval: protocol.measurementInterval,
     controllerMode: protocol.controllerMode,
     organizationMode: protocol.organizationMode,
+    coordCouplingAlpha: protocol.coordCouplingAlpha,
   });
 }
 
@@ -183,6 +191,12 @@ export function validateProtocol(
 
   const controllerMode = normalizeControllerMode(input.controllerMode);
   const organizationMode = normalizeOrganizationMode(input.organizationMode);
+  const rawAlpha = Number(
+    (input as { coordCouplingAlpha?: number }).coordCouplingAlpha ?? DEFAULT_COORD_COUPLING_ALPHA,
+  );
+  const coordCouplingAlpha = Number.isFinite(rawAlpha)
+    ? Math.max(0, Math.min(1, rawAlpha))
+    : DEFAULT_COORD_COUPLING_ALPHA;
 
   return {
     ok: true,
@@ -198,6 +212,7 @@ export function validateProtocol(
       repeats,
       controllerMode,
       organizationMode,
+      coordCouplingAlpha,
     },
   };
 }
@@ -224,6 +239,7 @@ export function captureProtocol(args: {
     repeats: args.repeats,
     controllerMode: args.settings.controllerMode,
     organizationMode: args.settings.organizationMode,
+    coordCouplingAlpha: args.settings.coordCouplingAlpha,
   });
 }
 
@@ -258,6 +274,7 @@ export function summarizeRun(
     studyCondition: protocol.studyCondition,
     controllerMode: protocol.controllerMode,
     organizationMode: protocol.organizationMode,
+    coordCouplingAlpha: protocol.coordCouplingAlpha,
     scheduleId: protocol.schedule.id,
     scheduleStartGen: protocol.schedule.startGen,
     scheduleDuration: protocol.schedule.duration,
@@ -385,6 +402,7 @@ export const RESEARCH_CSV_COLUMNS: (keyof ResearchRunSummary)[] = [
   "studyCondition",
   "controllerMode",
   "organizationMode",
+  "coordCouplingAlpha",
   "scheduleId",
   "scheduleStartGen",
   "scheduleDuration",
@@ -543,10 +561,10 @@ export const ABC_ORGANIZATION_SCHEDULE: DisturbanceSchedule = {
 export const ABC_ORGANIZATION_GENERATION_LIMIT = 200;
 
 export const ABC_ORGANIZATION_COPY =
-  "A/B/C: Central vs Local vs Coordinated — same seed, controllerMode, pulse@40/30 a=0.55, limit=200. " +
+  "A/B/C (+ ablation): Central vs Local vs Coordinated (α=0.3) vs Coordinated α=0 — same seed, controllerMode, pulse@40/30 a=0.55, limit=200. " +
   "Arm shared schedule → Lock → Run batch → Export. Unlock → Arm next (or Flip) → Lock → Run → Export. " +
   "Compare timeInKFraction, cumulativeDistanceOutsideK, recoveries, meanAbsDensityError, interventionRate, " +
-  "coordinationBandwidthProxy. Observational scaffolding only — not a VSM or life claim. " +
+  "coordinationBandwidthProxy. Observational scaffolding only — VSM is a hypothesis, not a claim. " +
   "Caveat: Unlock does not switch the arm — re-Arm (or Flip) before Lock so the next batch is not still on the previous mode.";
 
 /** Apply shared A/B/C world knobs + chosen organization mode (does not change study pack / seed). */
