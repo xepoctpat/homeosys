@@ -9,6 +9,7 @@ import {
   exportArmCsv,
   exportArmJsonl,
 } from "./evidence-matrix.ts";
+import { EVIDENCE_COLS, EVIDENCE_GRIDS, EVIDENCE_ROWS } from "./evidence-matrix.ts";
 import {
   M2_LADDER_SWEEP_AXES,
   M2_SWEEP_COORD_COUPLING_ALPHAS,
@@ -21,6 +22,7 @@ import {
   buildM2LadderSweepArms,
   buildM2SweepFactorCells,
   isAllowedM2SweepAxis,
+  resolveM2SweepGrids,
   runM2LadderSweep,
 } from "./m2-ladder-sweep.ts";
 import { THETA_SCHEMA_VERSION, assertExportHasFullTheta } from "./theta-v0.ts";
@@ -104,14 +106,28 @@ test("α expand forces Coordinated; non-Coordinated cells dedupe α", () => {
 });
 
 test("generated protocols/exports include full ThetaV0 + schemaVersion", () => {
+  // Dual-grid default: 3 studyConditions × 2 grids
   const arms = buildM2LadderSweepArms({ expandAxes: ["studyCondition"] });
-  assert.equal(arms.length, 3);
+  assert.equal(arms.length, 3 * EVIDENCE_GRIDS.length);
   for (const arm of arms) {
     assert.equal(arm.protocolTemplate.schedule.id, "pulse");
     assert.ok(arm.protocolTemplate.protocolId);
-    // smoke run n=1
+    assert.match(arm.id, /__g=(48x36|72x54)__/);
   }
-  const ran = runM2LadderSweep({ expandAxes: ["studyCondition"], n: 1, collectSeries: false });
+  // Cheap single-grid smoke via cols/rows
+  const single = buildM2LadderSweepArms({
+    expandAxes: ["studyCondition"],
+    cols: EVIDENCE_COLS,
+    rows: EVIDENCE_ROWS,
+  });
+  assert.equal(single.length, 3);
+  const ran = runM2LadderSweep({
+    expandAxes: ["studyCondition"],
+    cols: EVIDENCE_COLS,
+    rows: EVIDENCE_ROWS,
+    n: 1,
+    collectSeries: false,
+  });
   assert.ok(ran.length >= 1);
   const armResult = ran[0];
   const meta = armProtocolMeta(armResult);
@@ -140,11 +156,13 @@ test("generated protocols/exports include full ThetaV0 + schemaVersion", () => {
 test("smoke run of small sweep produces ≥1 arm/result with stamped θ", () => {
   const results = runM2LadderSweep({
     expandAxes: ["studyCondition", "controllerMode"],
+    cols: EVIDENCE_COLS,
+    rows: EVIDENCE_ROWS,
     n: 1,
     collectSeries: false,
   });
   assert.ok(results.length >= 1);
-  assert.equal(results.length, 3 * 2); // study × controller
+  assert.equal(results.length, 3 * 2); // study × controller (single grid)
   for (const arm of results) {
     assert.equal(arm.results.length, 1);
     assertExportHasFullTheta(arm.results[0]);
@@ -152,4 +170,62 @@ test("smoke run of small sweep produces ≥1 arm/result with stamped θ", () => 
     assert.equal(arm.results[0].theta.studyCondition, arm.arm.protocolTemplate.studyCondition);
     assert.equal(arm.results[0].theta.controllerMode, arm.arm.protocolTemplate.controllerMode);
   }
+});
+
+test("thick org×α×sched×ctrl cells = 24; × dual grids = 48 arms", () => {
+  const axes = [
+    "organizationMode",
+    "coordCouplingAlpha",
+    "schedule",
+    "controllerMode",
+  ] as const;
+  // studyCondition stays default homeostatic
+  const cells = buildM2SweepFactorCells({ expandAxes: [...axes] });
+  // Central×1α×3sched×2ctrl + Local×1×3×2 + Coordinated×2α×3×2 = 6+6+12 = 24
+  assert.equal(cells.length, 24);
+  const byOrg = {
+    Central: cells.filter((c) => c.organizationMode === "Central").length,
+    Local: cells.filter((c) => c.organizationMode === "Local").length,
+    Coordinated: cells.filter((c) => c.organizationMode === "Coordinated").length,
+  };
+  assert.deepEqual(byOrg, { Central: 6, Local: 6, Coordinated: 12 });
+  for (const c of cells) {
+    assert.equal(c.studyCondition, "homeostatic");
+  }
+
+  const arms = buildM2LadderSweepArms({ expandAxes: [...axes] });
+  assert.equal(resolveM2SweepGrids({}).length, 2);
+  assert.deepEqual(
+    resolveM2SweepGrids({}).map((g) => g.id),
+    ["48x36", "72x54"],
+  );
+  assert.equal(arms.length, 24 * 2); // 48
+  const g48 = arms.filter((a) => a.id.includes("__g=48x36__"));
+  const g72 = arms.filter((a) => a.id.includes("__g=72x54__"));
+  assert.equal(g48.length, 24);
+  assert.equal(g72.length, 24);
+  assert.equal(g48[0].protocolTemplate.cols, 48);
+  assert.equal(g48[0].protocolTemplate.rows, 36);
+  assert.equal(g72[0].protocolTemplate.cols, 72);
+  assert.equal(g72[0].protocolTemplate.rows, 54);
+
+  // Single-grid override via cols/rows
+  const single = buildM2LadderSweepArms({
+    expandAxes: [...axes],
+    cols: EVIDENCE_COLS,
+    rows: EVIDENCE_ROWS,
+  });
+  assert.equal(single.length, 24);
+  assert.ok(single.every((a) => a.id.includes("__g=48x36__")));
+});
+
+test("refuse continuous axes still throws (CLI exits 2)", () => {
+  assert.throws(
+    () => buildM2LadderSweepArms({ expandAxes: ["homeoGain"] }),
+    /refuses continuous|ladder sweep refuses/i,
+  );
+  assert.throws(
+    () => buildM2LadderSweepArms({ expandAxes: ["organizationMode", "climate"] }),
+    /climate/,
+  );
 });

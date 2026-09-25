@@ -4,13 +4,14 @@
  * Axes: studyCondition | controllerMode | organizationMode | coordCouplingAlpha | schedule.
  * Continuous gains (homeoGain, climate, seasonRate, noise, …) are refused.
  *
- * Builds a cartesian product of allowlisted discrete levels into evidence arms,
+ * Builds a cartesian product of allowlisted discrete levels × EVIDENCE_GRIDS into evidence arms,
  * runs via runEvidenceArm / runBatch, exports via exportArmJsonl/Csv (C2 θ stamp).
  *
  * Observational ≠ scientific closure. M6 HARD-GATED. No E1 eng platform.
  */
 import {
   EVIDENCE_COLS,
+  EVIDENCE_GRIDS,
   EVIDENCE_MEASUREMENT_INTERVAL,
   EVIDENCE_ROWS,
   EVIDENCE_WORLD_PRESET,
@@ -22,6 +23,8 @@ import {
   runEvidenceArm,
   type EvidenceArm,
   type EvidenceArmResult,
+  type EvidenceGrid,
+  type EvidenceGridId,
 } from "./evidence-matrix.ts";
 import { validateProtocol, type EngineFactory, type ResearchProtocol } from "./research-mode.ts";
 import type {
@@ -145,9 +148,31 @@ export interface M2SweepSpec {
     coordCouplingAlpha?: readonly number[];
     schedule?: readonly DisturbanceScheduleId[];
   };
+  /**
+   * Grids to run (default: EVIDENCE_GRIDS = 48×36 + 72×54).
+   * Single-grid override: pass one entry, or set cols/rows without grids
+   * (cheap smoke; synthesizes id from dims).
+   */
+  grids?: readonly EvidenceGrid[];
+  /** Single-grid override (ignored when `grids` is set). */
   cols?: number;
   rows?: number;
   generationLimit?: number;
+}
+
+/** Resolve grids for a sweep: explicit grids > cols/rows single > EVIDENCE_GRIDS dual. */
+export function resolveM2SweepGrids(spec: M2SweepSpec = {}): EvidenceGrid[] {
+  if (spec.grids && spec.grids.length > 0) {
+    return [...spec.grids];
+  }
+  if (spec.cols != null || spec.rows != null) {
+    const cols = spec.cols ?? EVIDENCE_COLS;
+    const rows = spec.rows ?? EVIDENCE_ROWS;
+    const known = EVIDENCE_GRIDS.find((g) => g.cols === cols && g.rows === rows);
+    const id = (known?.id ?? (`${cols}x${rows}` as EvidenceGridId));
+    return [{ id, cols, rows }];
+  }
+  return [...EVIDENCE_GRIDS];
 }
 
 export type M2SweepFactorCell = {
@@ -289,9 +314,10 @@ export function buildM2SweepFactorCells(spec: M2SweepSpec = {}): M2SweepFactorCe
   return out;
 }
 
-function armIdFor(cell: M2SweepFactorCell): string {
+function armIdFor(cell: M2SweepFactorCell, grid: EvidenceGrid): string {
   return [
     "m2-sweep",
+    `g=${grid.id}`,
     `sc=${cell.studyCondition}`,
     `ctrl=${cell.controllerMode}`,
     `org=${cell.organizationMode}`,
@@ -300,19 +326,21 @@ function armIdFor(cell: M2SweepFactorCell): string {
   ].join("__");
 }
 
-function factorString(cell: M2SweepFactorCell): string {
+function factorString(cell: M2SweepFactorCell, grid: EvidenceGrid): string {
   return [
     `studyCondition=${cell.studyCondition}`,
     `controllerMode=${cell.controllerMode}`,
     `organizationMode=${cell.organizationMode}`,
     `coordCouplingAlpha=${cell.coordCouplingAlpha}`,
     `schedule=${cell.scheduleId}`,
+    `grid=${grid.id}`,
   ].join(";");
 }
 
 function protocolTemplateFor(
   cell: M2SweepFactorCell,
   spec: M2SweepSpec,
+  grid: EvidenceGrid,
 ): Omit<ResearchProtocol, "seedKey" | "repeats"> {
   const schedule = { ...M2_SWEEP_SCHEDULE_BY_ID[cell.scheduleId] };
   const validated = validateProtocol({
@@ -321,30 +349,37 @@ function protocolTemplateFor(
     schedule,
     generationLimit: spec.generationLimit ?? M2_GENERATION_LIMIT,
     measurementInterval: EVIDENCE_MEASUREMENT_INTERVAL,
-    cols: spec.cols ?? EVIDENCE_COLS,
-    rows: spec.rows ?? EVIDENCE_ROWS,
+    cols: grid.cols,
+    rows: grid.rows,
     worldPreset: EVIDENCE_WORLD_PRESET,
     repeats: 1,
     controllerMode: cell.controllerMode,
     organizationMode: cell.organizationMode,
     coordCouplingAlpha: cell.coordCouplingAlpha,
-    armId: armIdFor(cell),
+    armId: armIdFor(cell, grid),
   });
   if (!validated.ok) throw new Error(validated.error);
   const { seedKey: _s, repeats: _r, ...rest } = validated.protocol;
   return rest;
 }
 
-/** Build EvidenceArm list for the M2 ladder-factor sweep. */
+/** Build EvidenceArm list for the M2 ladder-factor sweep (cells × grids). */
 export function buildM2LadderSweepArms(spec: M2SweepSpec = {}): EvidenceArm[] {
   const cells = buildM2SweepFactorCells(spec);
-  return cells.map((cell) => ({
-    id: armIdFor(cell),
-    milestone: "m2" as const,
-    label: `M2 sweep ${factorString(cell)}`,
-    factor: factorString(cell),
-    protocolTemplate: protocolTemplateFor(cell, spec),
-  }));
+  const grids = resolveM2SweepGrids(spec);
+  const arms: EvidenceArm[] = [];
+  for (const grid of grids) {
+    for (const cell of cells) {
+      arms.push({
+        id: armIdFor(cell, grid),
+        milestone: "m2" as const,
+        label: `M2 sweep ${factorString(cell, grid)}`,
+        factor: factorString(cell, grid),
+        protocolTemplate: protocolTemplateFor(cell, spec, grid),
+      });
+    }
+  }
+  return arms;
 }
 
 /**
