@@ -13,7 +13,7 @@
 - Exploratory play ≠ controlled evidence (need locked seed, K, schedule).
 - StudyConditionPack must not redefine world/disturbance; World must not redefine loops.
 - **Current experimental target stamp:** Steps **1–2** until evidence moves it.
-- **Engineering stamp (observational):** eng through **M5 organization scaffolding** is present; **evidence ladder M2–M5 shipped** with Reviewer **CONDITIONAL PASS** @ `0ac0d88` (`npm run evidence`, `evidence/m2`…`m5`). **Evidence-harden A–D tip @ `4d8f43c`:** A env-no-control + m2 arm; B calibrated observational K; C dual grid 48×36/72×54 + 20 explicit seeds; D `m5-coord-ablated`. Fixed `EVIDENCE_SEED_KEYS` (N=20). **Evidence-first work is in progress** — eng scaffolding ≠ scientific closure; Steps 3–5 / M2–M5 remain observational. **M6 HARD-GATED**. **Characterization→engine lock (captain ACCEPTED 2026-09-25):** C1–C3 before E1 eng; M2-only characterization first; θ v0 + env knobs in protocol; `schemaVersion` + full θ on evidence exports before sweeps; first sweep axes = ladder factors only (condition/controller/org/α/schedule), not continuous gains; no multi-system/meta-dynamics/UI theater; observational ≠ closure. **C1 landed @ `44cfaf9`** (ThetaV0 + golden replay); **C2 landed @ `2f45281`** (full ThetaV0 + `schemaVersion` on all exports, CSV+JSONL fail-closed); **C3 landed @ `51a88d2`** = M2 ladder-factor sweeps only (`m2-ladder-sweep`; continuous gains refused); **C1–C3 complete pending Reviewer**; **E1 held for captain**. **Write guard:** smoke defaults to `evidence/_smoke/` (gitignored); **subpath refuse** under `evidence/{m2..m5}` without `--write` (P3 PASS tip @ `9f8c290`; initial guard @ `63fa427`). Occupancy/CA UI language; Game of Life is not a product brand.
+- **Engineering stamp (observational):** eng through **M5 organization scaffolding** is present; **evidence ladder M2–M5 shipped** with Reviewer **CONDITIONAL PASS** @ `0ac0d88` (`npm run evidence`, `evidence/m2`…`m5`). **Evidence-harden A–D tip @ `4d8f43c`:** A env-no-control + m2 arm; B calibrated observational K; C dual grid 48×36/72×54 + 20 explicit seeds; D `m5-coord-ablated`. Fixed `EVIDENCE_SEED_KEYS` (N=20). **Evidence-first work is in progress** — eng scaffolding ≠ scientific closure; Steps 3–5 / M2–M5 remain observational. **M6 HARD-GATED**. **Characterization→engine lock (captain ACCEPTED 2026-09-25):** C1–C3 before E1 eng; M2-only characterization first; θ v0 + env knobs in protocol; `schemaVersion` + full θ on evidence exports before sweeps; first sweep axes = ladder factors only (condition/controller/org/α/schedule), not continuous gains; no multi-system/meta-dynamics/UI theater; observational ≠ closure. **C1 landed @ `44cfaf9`** (ThetaV0 + golden replay); **C2 landed @ `2f45281`** (full ThetaV0 + `schemaVersion` on all exports, CSV+JSONL fail-closed); **C3 landed @ `51a88d2`** = M2 ladder-factor sweeps only (`m2-ladder-sweep`; continuous gains refused); **dual-grid M2 ladder-factor expand @ `c1a979c`** (48×36 + 72×54 in one run; 48-arm N=20 under `_smoke`, not committed); **Reviewer PASS** on thick expand (nits OK); **E1 HOLD** for captain; observational ≠ closure. **Write guard:** smoke defaults to `evidence/_smoke/` (gitignored); **subpath refuse** under `evidence/{m2..m5}` without `--write` (P3 PASS tip @ `9f8c290`; initial guard @ `63fa427`). Occupancy/CA UI language; Game of Life is not a product brand.
 
 ## Long-horizon milestones
 
@@ -36,7 +36,7 @@
 5. **M4 controller modes** (SetpointError vs ViabilityBand) — **done** `56e3730` (modes only; not a closed evidence claim)
 6. **M5 eng scaffolding** (Central/Local/Coordinated + interventionRate) — shipped on research track; **not** a closed evidence claim
 7. **Evidence ladder M2–M5** — observational exports shipped @ `0ac0d88` (CONDITIONAL PASS); **≠ scientific closure**. **Evidence-harden A–D tip @ `4d8f43c`**. **Write guard** smoke → `_smoke`; **subpath refuse** @ `9f8c290`. **Next (captain ACCEPTED):** characterization→engine path — **not** eng theater; **do not start M6 autopoiesis**
-8. **Characterization→engine (locked)** — see section below; **C1–C3 done** (@ `44cfaf9` / `2f45281` / `51a88d2`); C3 = M2 ladder-factor sweeps only (continuous gains refused); **path complete pending Reviewer**; **E1 held for captain**
+8. **Characterization→engine (locked)** — see section below; **C1–C3 done** (@ `44cfaf9` / `2f45281` / `51a88d2`); C3 = M2 ladder-factor sweeps only (continuous gains refused); **dual-grid expand @ `c1a979c`**; **Reviewer PASS** on thick expand; **E1 held for captain**
 
 ## Characterization → engine lock (captain ACCEPTED 2026-09-25)
 
@@ -48,7 +48,7 @@ Authoritative sequencing lock (anti-drift):
 4. **First sweep axes = ladder factors only** — condition / controller / org / α / schedule. **Not** continuous controller gains on the first sweep.
 5. **M6 HARD-GATED** — no multi-system / meta-dynamics / UI theater. **Observational ≠ closure**.
 
-**Done:** C1 @ `44cfaf9`; **C2 @ `2f45281`**; **C3 @ `51a88d2`** = M2 ladder-factor sweeps (`src/sim/m2-ladder-sweep.ts`, `npm run evidence -- --sweep-m2`). Axes: studyCondition / controllerMode / organizationMode / coordCouplingAlpha∈{0,0.3} / schedule∈{none,pulse,sustained}. Continuous gains refused. **C1–C3 characterization path complete pending Reviewer**; **E1 held for captain**. Observational ≠ closure; **M6 HARD-GATED**.
+**Done:** C1 @ `44cfaf9`; **C2 @ `2f45281`**; **C3 @ `51a88d2`** = M2 ladder-factor sweeps (`src/sim/m2-ladder-sweep.ts`, `npm run evidence -- --sweep-m2`). Axes: studyCondition / controllerMode / organizationMode / coordCouplingAlpha∈{0,0.3} / schedule∈{none,pulse,sustained}. Continuous gains refused. **Dual-grid expand @ `c1a979c`** (48×36+72×54 one run; 48-arm N=20 `_smoke` not committed); **Reviewer PASS**; **E1 HOLD**; **M6 HARD-GATED**; observational ≠ closure.
 
 ## Component ownership (Architect)
 
@@ -97,4 +97,7 @@ E. Stamp current target Steps 1–2 — applied
 | 2026-09-25 | Developer | C2 full ThetaV0 + schemaVersion on all evidence exports (CSV+JSONL fail-closed) | Done `2f45281` |
 | 2026-09-25 | Editor | README + nav checkpoint after C2 landing (C2 done; C3 next = M2 ladder sweeps) | Done `2e72067` |
 | 2026-09-25 | Developer | C3 M2 ladder-factor sweep (allowlist + refuse continuous gains; smoke CLI) | Done `51a88d2` |
-| 2026-09-25 | Editor | README + nav checkpoint after C3 landing (C1–C3 pending Reviewer; E1 held) | Done (this commit) |
+| 2026-09-25 | Editor | README + nav checkpoint after C3 landing (C1–C3 pending Reviewer; E1 held) | Done `4c4100e` |
+| 2026-09-25 | Developer | M2 ladder dual-grid thick expand (48×36+72×54) | Done `c1a979c` |
+| 2026-09-25 | Reviewer | PASS on M2 thick expand (nits OK) | Noted @ `c1a979c` |
+| 2026-09-25 | Editor | README + nav checkpoint after M2 thick expand | Done (this commit) |

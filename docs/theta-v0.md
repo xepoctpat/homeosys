@@ -46,6 +46,8 @@ K + run: `densityMin`, `densityMax` (default `PROTOCOL_CALIBRATED_K`), `generati
 
 Continuous gains (`homeoGain`, `climate`, `seasonRate`, `noise`, …) are **refused** as sweep axes (`assertM2SweepSpec` / `isAllowedM2SweepAxis`) — still stamped in ThetaV0 for completeness. Default smoke expands `studyCondition` only; full matrix via `--sweep-axes` / `expandAxes`. CLI: `npm run evidence -- --sweep-m2` → `evidence/_smoke/m2-sweep/` (write-guard unchanged).
 
+**Dual-grid expand @ `c1a979c`:** runs 48×36+72×54 arms in one sweep; default/full matrix still ladder-factor discrete axes only; smoke 48-arm N=20 under `_smoke` not committed. **E1 not started.** **M6 HARD-GATED.** Observational ≠ closure.
+
 **Observational ≠ scientific closure. M6 HARD-GATED. No E1 eng platform / multi-system / UI theater.**
 
 Architect may refine the field table; any delta lands as an explicit follow-up, not a silent omission of env knobs or `schemaVersion`. Soft nit deferred: nullish numeric θ coerce vs refuse.
