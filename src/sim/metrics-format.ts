@@ -58,6 +58,12 @@ export function buildMetricCells(
         title: "Cumulative density distance outside provisional K",
       },
       {
+        label: "Recoveries",
+        value: "—",
+        hideOnSmall: true,
+        title: "K exits followed by a later re-entry (observational)",
+      },
+      {
         label: "K dens",
         value: "—",
         hideOnSmall: true,
@@ -65,6 +71,18 @@ export function buildMetricCells(
       },
       { label: "Viability", value: "—" },
       { label: "Setpoint", value: "—", hideOnSmall: true },
+      {
+        label: "|ρ−sp|",
+        value: "—",
+        hideOnSmall: true,
+        title: "Mean |density − setpoint| over observed steps",
+      },
+      {
+        label: "Controller",
+        value: "—",
+        hideOnSmall: true,
+        title: "Fast homeostasis policy mode (SetpointError | ViabilityBand)",
+      },
       { label: "Rule", value: "—" },
       { label: "Seed", value: "—", hideOnSmall: true },
       {
@@ -137,6 +155,12 @@ export function buildMetricCells(
       title: "Cumulative density distance outside provisional K",
     },
     {
+      label: "Recoveries",
+      value: fmt(metrics.recoveries),
+      hideOnSmall: true,
+      title: "K exits followed by a later re-entry (observational)",
+    },
+    {
       label: "K dens",
       value: kDens,
       hideOnSmall: true,
@@ -144,6 +168,18 @@ export function buildMetricCells(
     },
     { label: "Viability", value: fixed(metrics.viability, 2) },
     { label: "Setpoint", value: pct(metrics.setpoint), hideOnSmall: true },
+    {
+      label: "|ρ−sp|",
+      value: fixed(metrics.meanAbsDensityError, 3),
+      hideOnSmall: true,
+      title: "Mean |density − setpoint| over observed steps",
+    },
+    {
+      label: "Controller",
+      value: typeof metrics.controllerMode === "string" ? metrics.controllerMode : "—",
+      hideOnSmall: true,
+      title: "Fast homeostasis policy mode (SetpointError | ViabilityBand)",
+    },
     { label: "Rule", value: typeof metrics.rule === "string" ? metrics.rule : "—" },
     { label: "Seed", value: seedVal, hideOnSmall: true },
     {

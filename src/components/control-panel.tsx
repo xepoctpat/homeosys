@@ -19,10 +19,12 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
+  CONTROLLER_MODES,
   PRESETS,
   PROVISIONAL_SCHEDULE,
   normalizeDisturbance,
   STUDY_CONDITIONS,
+  type ControllerMode,
   type DisturbanceScheduleId,
   type Metrics,
   type PaintMode,
@@ -33,6 +35,9 @@ import {
 import { disturbanceWindowCopy } from "@/sim/disturbance-window";
 import { finiteOr, fixed } from "@/sim/metrics-format";
 import {
+  AB_CONTROLLER_COPY,
+  AB_CONTROLLER_GENERATION_LIMIT,
+  armAbControllerSettings,
   RESEARCH_DEFAULT_REPEATS,
   RESEARCH_REPEATS_MAX,
   RESEARCH_REPEATS_MIN,
@@ -578,6 +583,7 @@ export function ControlPanel(props: ControlPanelProps) {
                   settings.disturbance,
                   metrics?.generation,
                   metrics?.w,
+                  settings.generationLimit,
                 )}
               </p>
               <div className="flex flex-wrap gap-2">
@@ -750,6 +756,39 @@ export function ControlPanel(props: ControlPanelProps) {
               checked={settings.cybernetics}
               onCheckedChange={(v) => onSettings({ cybernetics: v })}
             />
+            <div className="space-y-2">
+              <div className="text-sm text-fg">Controller mode</div>
+              <p className="text-xs leading-relaxed text-subtle">
+                SetpointError minimizes |density − setpoint|. ViabilityBand acts only
+                near/outside provisional K and tolerates drift inside the band. Observational
+                A/B factor — not a claim about life or autopoiesis.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {CONTROLLER_MODES.map((mode) => {
+                  const on = settings.controllerMode === mode.id;
+                  return (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      title={mode.blurb}
+                      disabled={protocolLocked}
+                      onClick={() => {
+                        if (protocolLocked) return;
+                        onSettings({ controllerMode: mode.id });
+                      }}
+                      className={cn(
+                        "rounded-full px-3 py-1.5 text-sm transition-colors duration-150",
+                        on ? "bg-accent text-accent-fg" : "bg-raised text-muted hover:text-fg",
+                        protocolLocked && "opacity-60",
+                      )}
+                      aria-pressed={on}
+                    >
+                      {mode.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <Row
               label="Correction strength"
               value={fixed(settings.homeoGain, 2)}
@@ -841,8 +880,8 @@ export function ControlPanel(props: ControlPanelProps) {
               {protocolLocked && researchProtocol ? (
                 <p className="font-mono text-xs leading-relaxed text-muted">
                   seed={researchProtocol.seedKey >>> 0} · {researchProtocol.studyCondition} ·{" "}
-                  {researchProtocol.schedule.id}@{researchProtocol.schedule.startGen}/
-                  {researchProtocol.schedule.duration}/a=
+                  {researchProtocol.controllerMode} · {researchProtocol.schedule.id}@
+                  {researchProtocol.schedule.startGen}/{researchProtocol.schedule.duration}/a=
                   {researchProtocol.schedule.amplitude.toFixed(2)} · limit=
                   {researchProtocol.generationLimit} · measure=
                   {researchProtocol.measurementInterval || "off"}
@@ -876,6 +915,51 @@ export function ControlPanel(props: ControlPanelProps) {
               {researchHint ? (
                 <p className="text-xs leading-relaxed text-accent">{researchHint}</p>
               ) : null}
+            </div>
+            <div className="space-y-3 rounded-lg border border-border bg-raised/40 px-3 py-3">
+              <div className="text-sm text-fg">A/B: SetpointError vs ViabilityBand</div>
+              <p className="text-xs leading-relaxed text-subtle">{AB_CONTROLLER_COPY}</p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  disabled={protocolLocked || researchBatchRunning}
+                  onClick={() => {
+                    if (protocolLocked) return;
+                    onSettings(armAbControllerSettings("SetpointError"));
+                  }}
+                >
+                  Arm A (SetpointError)
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={protocolLocked || researchBatchRunning}
+                  onClick={() => {
+                    if (protocolLocked) return;
+                    onSettings(armAbControllerSettings("ViabilityBand"));
+                  }}
+                >
+                  Arm B (ViabilityBand)
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={protocolLocked || researchBatchRunning}
+                  onClick={() => {
+                    if (protocolLocked) return;
+                    const next: ControllerMode =
+                      settings.controllerMode === "SetpointError"
+                        ? "ViabilityBand"
+                        : "SetpointError";
+                    onSettings({ controllerMode: next });
+                  }}
+                >
+                  Flip mode only
+                </Button>
+              </div>
+              <p className="font-mono text-[10px] leading-relaxed text-muted">
+                Current mode {settings.controllerMode} · shared limit{" "}
+                {AB_CONTROLLER_GENERATION_LIMIT}. Steps: Arm A → Lock → Run batch → Export →
+                Unlock → Arm B (or Flip) → Lock → Run → Export.
+              </p>
             </div>
             <Row
               label="Repeats (N)"

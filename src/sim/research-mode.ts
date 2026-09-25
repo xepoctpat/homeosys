@@ -2,8 +2,10 @@ import { SimEngine } from "./engine.ts";
 import {
   DEFAULT_SETTINGS,
   STUDY_CONDITIONS,
+  normalizeControllerMode,
   normalizeDisturbance,
   normalizeSimSettings,
+  type ControllerMode,
   type DisturbanceSchedule,
   type Metrics,
   type PresetId,
@@ -35,6 +37,8 @@ export interface ResearchProtocol {
   /** World pattern preset used for seeding (not a loop flag). */
   worldPreset: PresetId;
   repeats: number;
+  /** Fast homeostasis policy mode (M4 A/B factor). */
+  controllerMode: ControllerMode;
 }
 
 /** Per-generation sample at a measurement tick (optional, cheap JSONL). */
@@ -45,6 +49,7 @@ export interface ResearchSeriesPoint {
   timeInKFraction: number;
   cumulativeDistanceOutsideK: number;
   recoveries: number;
+  meanAbsDensityError: number;
   w: number;
   rule: string;
   ultraProbeCount: number;
@@ -57,6 +62,7 @@ export interface ResearchRunSummary {
   runIndex: number;
   seedKey: number;
   studyCondition: StudyConditionId;
+  controllerMode: ControllerMode;
   scheduleId: DisturbanceSchedule["id"];
   scheduleStartGen: number;
   scheduleDuration: number;
@@ -72,6 +78,7 @@ export interface ResearchRunSummary {
   timeInKFraction: number;
   cumulativeDistanceOutsideK: number;
   recoveries: number;
+  meanAbsDensityError: number;
   ultraProbeCount: number;
   ultraKeptCount: number;
   ultraRevertedCount: number;
@@ -99,6 +106,7 @@ export function settingsFromProtocol(protocol: ResearchProtocol): SimSettings {
     disturbance: protocol.schedule,
     generationLimit: protocol.generationLimit,
     measurementInterval: protocol.measurementInterval,
+    controllerMode: protocol.controllerMode,
   });
 }
 
@@ -153,6 +161,8 @@ export function validateProtocol(
   const measurementInterval = Math.max(0, Math.round(Number(input.measurementInterval) || 0));
   const repeats = clampRepeats(Number(input.repeats ?? RESEARCH_DEFAULT_REPEATS));
 
+  const controllerMode = normalizeControllerMode(input.controllerMode);
+
   return {
     ok: true,
     protocol: {
@@ -165,6 +175,7 @@ export function validateProtocol(
       rows,
       worldPreset,
       repeats,
+      controllerMode,
     },
   };
 }
@@ -189,6 +200,7 @@ export function captureProtocol(args: {
     rows: args.rows,
     worldPreset: args.worldPreset,
     repeats: args.repeats,
+    controllerMode: args.settings.controllerMode,
   });
 }
 
@@ -200,6 +212,7 @@ function seriesPointFromMetrics(m: Metrics): ResearchSeriesPoint {
     timeInKFraction: m.timeInKFraction,
     cumulativeDistanceOutsideK: m.cumulativeDistanceOutsideK,
     recoveries: m.recoveries,
+    meanAbsDensityError: m.meanAbsDensityError,
     w: m.w,
     rule: m.rule,
     ultraProbeCount: m.ultraProbeCount,
@@ -218,6 +231,7 @@ export function summarizeRun(
     runIndex,
     seedKey: protocol.seedKey,
     studyCondition: protocol.studyCondition,
+    controllerMode: protocol.controllerMode,
     scheduleId: protocol.schedule.id,
     scheduleStartGen: protocol.schedule.startGen,
     scheduleDuration: protocol.schedule.duration,
@@ -233,6 +247,7 @@ export function summarizeRun(
     timeInKFraction: metrics.timeInKFraction,
     cumulativeDistanceOutsideK: metrics.cumulativeDistanceOutsideK,
     recoveries: metrics.recoveries,
+    meanAbsDensityError: metrics.meanAbsDensityError,
     ultraProbeCount: metrics.ultraProbeCount,
     ultraKeptCount: metrics.ultraKeptCount,
     ultraRevertedCount: metrics.ultraRevertedCount,
@@ -335,6 +350,7 @@ export const RESEARCH_CSV_COLUMNS: (keyof ResearchRunSummary)[] = [
   "runIndex",
   "seedKey",
   "studyCondition",
+  "controllerMode",
   "scheduleId",
   "scheduleStartGen",
   "scheduleDuration",
@@ -350,6 +366,7 @@ export const RESEARCH_CSV_COLUMNS: (keyof ResearchRunSummary)[] = [
   "timeInKFraction",
   "cumulativeDistanceOutsideK",
   "recoveries",
+  "meanAbsDensityError",
   "ultraProbeCount",
   "ultraKeptCount",
   "ultraRevertedCount",
@@ -381,7 +398,7 @@ export function exportCsv(results: ResearchRunSummary[]): string {
 export function researchExportBasename(protocol: ResearchProtocol, timestamp = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   const ts = `${timestamp.getFullYear()}${pad(timestamp.getMonth() + 1)}${pad(timestamp.getDate())}-${pad(timestamp.getHours())}${pad(timestamp.getMinutes())}${pad(timestamp.getSeconds())}`;
-  return `homeosys-research-${protocol.studyCondition}-${protocol.schedule.id}-${ts}`;
+  return `homeosys-research-${protocol.studyCondition}-${protocol.controllerMode}-${protocol.schedule.id}-${ts}`;
 }
 
 /**
@@ -418,4 +435,52 @@ export function downloadResearchExport(
   const name = `${base}.csv`;
   downloadTextFile(name, exportCsv(results), "text/csv");
   return name;
+}
+
+/**
+ * Shared A/B disturbance family for SetpointError vs ViabilityBand (M4).
+ * Identical schedule / seed / generationLimit — only controllerMode flips.
+ * Provisional knobs; not calibrated.
+ */
+export const AB_CONTROLLER_SCHEDULE: DisturbanceSchedule = {
+  id: "pulse",
+  startGen: 40,
+  duration: 30,
+  amplitude: 0.55,
+};
+
+/** Shared finite horizon for M4 A/B batches (must be > schedule.startGen). */
+export const AB_CONTROLLER_GENERATION_LIMIT = 200;
+
+export const AB_CONTROLLER_COPY =
+  "A/B: SetpointError vs ViabilityBand — same seed, pulse@40/30 a=0.55, limit=200. " +
+  "Arm shared schedule → Lock → Run batch → Export. Unlock → Flip mode → Lock → Run → Export. " +
+  "Compare timeInKFraction, cumulativeDistanceOutsideK, recoveries, meanAbsDensityError. Observational only.";
+
+/** Apply shared A/B world knobs + chosen mode (does not change study pack / seed). */
+export function armAbControllerSettings(
+  mode: ControllerMode,
+): Pick<SimSettings, "controllerMode" | "disturbance" | "generationLimit"> {
+  return {
+    controllerMode: mode,
+    disturbance: { ...AB_CONTROLLER_SCHEDULE },
+    generationLimit: AB_CONTROLLER_GENERATION_LIMIT,
+  };
+}
+
+/** Build two protocols that differ only in controllerMode. */
+export function abControllerProtocols(
+  base: Omit<ResearchProtocol, "controllerMode">,
+): { setpoint: ResearchProtocol; viability: ResearchProtocol } {
+  const shared = validateProtocol({ ...base, controllerMode: "SetpointError" });
+  if (!shared.ok) throw new Error(shared.error);
+  const setpoint: ResearchProtocol = {
+    ...shared.protocol,
+    controllerMode: "SetpointError",
+  };
+  const viability: ResearchProtocol = {
+    ...shared.protocol,
+    controllerMode: "ViabilityBand",
+  };
+  return { setpoint, viability };
 }

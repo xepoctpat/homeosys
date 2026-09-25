@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  abControllerProtocols,
   captureProtocol,
   clampRepeats,
   exportCsv,
@@ -27,6 +28,7 @@ function baseProtocol(over: Partial<ResearchProtocol> = {}): ResearchProtocol {
     rows: 36,
     worldPreset: "classic",
     repeats: 3,
+    controllerMode: "SetpointError",
     ...over,
   };
 }
@@ -264,4 +266,65 @@ test("settingsFromProtocol normalizes schedule via normalizeSimSettings", () => 
   assert.ok(Number.isFinite(built.disturbance.startGen));
   assert.ok(Number.isFinite(built.disturbance.duration));
   assert.ok(Number.isFinite(built.disturbance.amplitude));
+});
+
+test("validateProtocol / captureProtocol include controllerMode", () => {
+  const result = validateProtocol(baseProtocol({ controllerMode: "ViabilityBand" }));
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.protocol.controllerMode, "ViabilityBand");
+
+  const settings: SimSettings = {
+    ...DEFAULT_SETTINGS,
+    controllerMode: "ViabilityBand",
+    disturbance: { id: "pulse", startGen: 10, duration: 5, amplitude: 0.4 },
+    generationLimit: 40,
+  };
+  const captured = captureProtocol({
+    seedKey: 7,
+    studyCondition: "homeostatic",
+    settings,
+    cols: 32,
+    rows: 24,
+    worldPreset: "classic",
+    repeats: 2,
+  });
+  assert.equal(captured.ok, true);
+  if (!captured.ok) return;
+  assert.equal(captured.protocol.controllerMode, "ViabilityBand");
+  const built = settingsFromProtocol(captured.protocol);
+  assert.equal(built.controllerMode, "ViabilityBand");
+});
+
+test("export CSV/JSONL includes controllerMode and meanAbsDensityError", () => {
+  const protocol = baseProtocol({
+    repeats: 1,
+    generationLimit: 15,
+    measurementInterval: 5,
+    controllerMode: "SetpointError",
+  });
+  const results = runBatch(protocol);
+  const csv = exportCsv(results);
+  assert.ok(csv.includes("controllerMode"));
+  assert.ok(csv.includes("meanAbsDensityError"));
+  assert.ok(csv.includes("SetpointError"));
+  const row = JSON.parse(exportJsonl(results).trim().split("\n")[0]);
+  assert.equal(row.controllerMode, "SetpointError");
+  assert.ok(typeof row.meanAbsDensityError === "number");
+  assert.ok(typeof row.timeInKFraction === "number");
+  assert.ok(typeof row.cumulativeDistanceOutsideK === "number");
+  assert.ok(typeof row.recoveries === "number");
+});
+
+test("abControllerProtocols differ only in controllerMode", () => {
+  const { setpoint, viability } = abControllerProtocols(
+    baseProtocol({ controllerMode: "SetpointError" }),
+  );
+  assert.equal(setpoint.controllerMode, "SetpointError");
+  assert.equal(viability.controllerMode, "ViabilityBand");
+  assert.equal(setpoint.seedKey, viability.seedKey);
+  assert.equal(setpoint.studyCondition, viability.studyCondition);
+  assert.deepEqual(setpoint.schedule, viability.schedule);
+  assert.equal(setpoint.generationLimit, viability.generationLimit);
+  assert.equal(setpoint.worldPreset, viability.worldPreset);
 });

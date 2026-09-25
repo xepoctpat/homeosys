@@ -49,6 +49,38 @@ export const PROVISIONAL_K: ViableRegion = {
 export type DisturbanceScheduleId = "none" | "pulse" | "sustained";
 
 /**
+ * Controller / policy mode for the fast homeostasis loop (M4).
+ * SetpointError: minimize |density − setpoint| (legacy density-error behavior).
+ * ViabilityBand: act only near/outside provisional K [densityMin, densityMax]; tolerate drift inside K.
+ */
+export type ControllerMode = "SetpointError" | "ViabilityBand";
+
+export const CONTROLLER_MODES: {
+  id: ControllerMode;
+  label: string;
+  blurb: string;
+}[] = [
+  {
+    id: "SetpointError",
+    label: "SetpointError",
+    blurb: "Minimize |density − setpoint|. Legacy density-error correction.",
+  },
+  {
+    id: "ViabilityBand",
+    label: "ViabilityBand",
+    blurb: "Act only near/outside provisional K; tolerate drift inside the band.",
+  },
+];
+
+const CONTROLLER_MODE_IDS: ControllerMode[] = ["SetpointError", "ViabilityBand"];
+
+export function normalizeControllerMode(raw: unknown): ControllerMode {
+  return CONTROLLER_MODE_IDS.includes(raw as ControllerMode)
+    ? (raw as ControllerMode)
+    : "SetpointError";
+}
+
+/**
  * Provisional DisturbanceSchedule knobs — lab defaults, not calibrated.
  * w(t) is computed from these params over generation t; study packs must not redefine them.
  */
@@ -167,6 +199,10 @@ export interface Metrics {
   recoveries: number;
   /** Generations since last re-entry while still in K; null if outside or never re-entered. */
   settlingTime: number | null;
+  /** Active controller/policy mode (observational). */
+  controllerMode: ControllerMode;
+  /** Mean |density − setpoint| over observed steps (setpoint-error metric for A/B). */
+  meanAbsDensityError: number;
   /** Active disturbance schedule id (replay note). */
   scheduleId: DisturbanceScheduleId;
   /** Current w(t) from the schedule at this generation. */
@@ -197,6 +233,11 @@ export interface SimSettings {
   homeoGain: number;
   autoSetpoint: boolean;
   setpoint: number;
+  /**
+   * Fast homeostasis policy mode. Loop-layer only — study packs must not set this
+   * (ResearchMode lock / A/B presets own the A/B pairing).
+   */
+  controllerMode: ControllerMode;
   ultraEnabled: boolean;
   varietyEnabled: boolean;
   autoEnabled: boolean;
@@ -238,6 +279,7 @@ export const DEFAULT_SETTINGS: SimSettings = {
   homeoGain: 0.55,
   autoSetpoint: true,
   setpoint: 0.16,
+  controllerMode: "SetpointError",
   ultraEnabled: true,
   varietyEnabled: true,
   autoEnabled: true,
@@ -256,6 +298,7 @@ export function normalizeSimSettings(raw: unknown): SimSettings {
     ...DEFAULT_SETTINGS,
     ...r,
     disturbance: normalizeDisturbance(r.disturbance ?? DEFAULT_SETTINGS.disturbance),
+    controllerMode: normalizeControllerMode(r.controllerMode ?? DEFAULT_SETTINGS.controllerMode),
     densityMin: finiteNumber(r.densityMin, DEFAULT_SETTINGS.densityMin),
     densityMax: finiteNumber(r.densityMax, DEFAULT_SETTINGS.densityMax),
     generationLimit: Math.max(

@@ -174,6 +174,8 @@ export class SimEngine {
   private recoveries = 0;
   private prevInK: boolean | null = null;
   private lastInK = false;
+  /** Running sum of |density − setpoint| for meanAbsDensityError. */
+  private absDensityErrorSum = 0;
   /** Last computed schedule disturbance w(t). */
   private lastW = 0;
   private measureCount = 0;
@@ -678,7 +680,7 @@ export class SimEngine {
     else this.collapseStreak = 0;
 
     const target = this.setpoint;
-    const err = target - density;
+    const err = this.densityControlError(density);
     const stab = 1 - Math.min(1, freeze / 0.08);
     const diversity = entropy;
     const via =
@@ -754,7 +756,32 @@ export class SimEngine {
     }
   }
 
+  /**
+   * Control error for the fast homeostasis loop.
+   * SetpointError: setpoint − density (legacy).
+   * ViabilityBand: signed distance to soft K edges; 0 inside the soft band (tolerate drift).
+   */
+  private densityControlError(density: number): number {
+    if (this.settings.controllerMode === "ViabilityBand") {
+      const { densityMin, densityMax } = this.settings;
+      const band = Math.max(0.01, densityMax - densityMin);
+      // Provisional soft margin (~5% of band, capped) — act near as well as outside K.
+      const margin = Math.min(0.02, band * 0.05);
+      const softMin = densityMin + margin;
+      const softMax = densityMax - margin;
+      if (density < softMin) return softMin - density;
+      if (density > softMax) return softMax - density;
+      return 0;
+    }
+    return this.setpoint - density;
+  }
+
   private runHomeostasis(err: number, density: number, gain: number): void {
+    // ViabilityBand: decay integral and idle while inside the soft K band.
+    if (this.settings.controllerMode === "ViabilityBand" && Math.abs(err) < 1e-9) {
+      this.integral *= 0.85;
+      return;
+    }
     this.integral = Math.max(-0.4, Math.min(0.4, this.integral + err * 0.02));
     const u = gain * (err * 1.4 + this.integral * 0.6);
     if (u > 0.01) {
@@ -773,7 +800,7 @@ export class SimEngine {
           "homeostasis",
         );
       }
-    } else if (u < -0.02 && density > this.setpoint * 1.35) {
+    } else if (u < -0.02 && this.shouldCull(density)) {
       const cull = Math.min(120, Math.floor(-u * this.alive.length * 0.01));
       let killed = 0;
       for (let s = 0; s < cull; s++) {
@@ -785,6 +812,14 @@ export class SimEngine {
       }
       if (killed > 0) this.note("homeostasis", true, `culled ${killed}`);
     }
+  }
+
+  /** Cull gate differs by mode: setpoint overshoot vs density above provisional K max. */
+  private shouldCull(density: number): boolean {
+    if (this.settings.controllerMode === "ViabilityBand") {
+      return density > this.settings.densityMax;
+    }
+    return density > this.setpoint * 1.35;
   }
 
   private runVariety(diversity: number, n: number): void {
@@ -908,6 +943,7 @@ export class SimEngine {
     this.recoveries = 0;
     this.prevInK = null;
     this.lastInK = false;
+    this.absDensityErrorSum = 0;
     this.lastW = 0;
     this.measureCount = 0;
     this.shouldMeasure = false;
@@ -933,6 +969,7 @@ export class SimEngine {
     this.stepsObserved++;
     if (inK) this.stepsInK++;
     this.cumulativeDistanceOutsideK += dist;
+    this.absDensityErrorSum += Math.abs(density - this.setpoint);
 
     if (this.prevInK !== null) {
       if (this.prevInK && !inK) {
@@ -994,6 +1031,9 @@ export class SimEngine {
       lastEnterGeneration: this.lastEnterGeneration,
       recoveries: this.recoveries,
       settlingTime,
+      controllerMode: this.settings.controllerMode ?? "SetpointError",
+      meanAbsDensityError:
+        this.stepsObserved > 0 ? this.absDensityErrorSum / this.stepsObserved : 0,
       scheduleId: this.settings.disturbance.id,
       w: this.lastW,
       scheduleStartGen: this.settings.disturbance.startGen,
