@@ -28,10 +28,12 @@ scientific closure of M2–M5.
 
 | Milestone | Arms | Shared factor | Contrast |
 |-----------|------|---------------|----------|
-| **M2** homeostasis | `m2-baseline`, `m2-env-no-control`, `m2-homeostatic` | pulse@40/30 a=0.55, limit=200, SetpointError+Central, 48×36 homeostat | studyCondition baseline vs envNoControl vs homeostatic |
-| **M3** ultrastability | `m3-homeostatic`, `m3-ultrastable` | sustained@30/120 a=0.55, limit=200 | studyCondition homeostatic vs ultrastable; UltraEpisodeLog aggregates in each summary |
-| **M4** controller | `m4-setpoint`, `m4-viability` | `abControllerProtocols` shared schedule | controllerMode SetpointError vs ViabilityBand |
-| **M5** organization | `m5-central`, `m5-local`, `m5-coordinated` | `abcOrganizationProtocols` shared schedule | organizationMode Central \| Local \| Coordinated |
+| **M2** homeostasis | `m2-baseline`, `m2-env-no-control`, `m2-homeostatic` (+ `-72x54`) | pulse@40/30 a=0.55, limit=200, SetpointError+Central, homeostat | studyCondition baseline vs envNoControl vs homeostatic |
+| **M3** ultrastability | `m3-homeostatic`, `m3-ultrastable` (+ `-72x54`) | sustained@30/120 a=0.55, limit=200 | studyCondition homeostatic vs ultrastable; UltraEpisodeLog aggregates in each summary |
+| **M4** controller | `m4-setpoint`, `m4-viability` (+ `-72x54`) | `abControllerProtocols` shared schedule | controllerMode SetpointError vs ViabilityBand |
+| **M5** organization | `m5-central`, `m5-local`, `m5-coordinated` (+ `-72x54`) | `abcOrganizationProtocols` shared schedule | organizationMode Central \| Local \| Coordinated |
+
+Each contrast family is run on **two grids**: `48×36` (canonical arm ids) and `72×54` (arm id suffix `-72x54`).
 
 All arms use study packs from `STUDY_CONDITIONS` via `settingsFromProtocol` /
 `runOne`. World knobs (cols/rows/worldPreset/schedule/limit) are locked in
@@ -39,12 +41,12 @@ All arms use study packs from `STUDY_CONDITIONS` via `settingsFromProtocol` /
 
 ## Seed strategy
 
-**Fixed `EVIDENCE_SEED_KEYS` list** (length 10) in `evidence-matrix.ts`.
+**Fixed `EVIDENCE_SEED_KEYS` list** (length 20) in `evidence-matrix.ts`.
 Run index `i` uses `EVIDENCE_SEED_KEYS[i]`. This is deterministic and explicit —
-not `Date` / `Math.random`, and not silent `seedKey+runIndex` mixing unless the
-list is extended on purpose.
+not `Date` / `Math.random`, and not silent `seedKey+runIndex` mixing; extend the
+list explicitly when broader N is required.
 
-Default N = 10 (`EVIDENCE_DEFAULT_N`). Smoke / CI may pass `--n 2`.
+Default N = 20 (`EVIDENCE_DEFAULT_N`). Smoke / CI may pass `--n 2`.
 
 **Note:** Committed `evidence/{m2..m5}` snapshots are observational; smoke/default
 CLI writes only `evidence/_smoke/` unless `--write` is passed.

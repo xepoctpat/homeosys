@@ -21,23 +21,45 @@ import {
 } from "./research-mode.ts";
 import type { DisturbanceSchedule, PresetId, StudyConditionId } from "./types.ts";
 
-/** Default N for published evidence arms. */
-export const EVIDENCE_DEFAULT_N = 10;
+/** Default N for published evidence arms (prefix of EVIDENCE_SEED_KEYS). */
+export const EVIDENCE_DEFAULT_N = 20;
 
 /**
- * Deterministic seed strategy: fixed seedKey list (length = EVIDENCE_DEFAULT_N).
+ * Deterministic seed strategy: fixed explicit seedKey list.
  * Each arm run i uses EVIDENCE_SEED_KEYS[i]. Re-runs with the same list are bit-identical
- * given the same protocol knobs. Do not derive from Date/Math.random.
+ * given the same protocol knobs. Do not derive from Date/Math.random or silent seedKey+i.
+ * Extend this list explicitly when broader N is required.
  */
 export const EVIDENCE_SEED_KEYS: readonly number[] = [
   0x0a01_0001, 0x0a01_0002, 0x0a01_0003, 0x0a01_0004, 0x0a01_0005, 0x0a01_0006, 0x0a01_0007,
-  0x0a01_0008, 0x0a01_0009, 0x0a01_000a,
+  0x0a01_0008, 0x0a01_0009, 0x0a01_000a, 0x0a01_000b, 0x0a01_000c, 0x0a01_000d, 0x0a01_000e,
+  0x0a01_000f, 0x0a01_0010, 0x0a01_0011, 0x0a01_0012, 0x0a01_0013, 0x0a01_0014,
 ];
 
-/** Shared world geometry / preset across M2–M5 arms (study packs own loop flags). */
+/** Shared world preset across M2–M5 arms (study packs own loop flags). */
+export const EVIDENCE_WORLD_PRESET: PresetId = "homeostat";
+
+/** Primary (canonical) grid — retained arm ids without suffix. */
 export const EVIDENCE_COLS = 48;
 export const EVIDENCE_ROWS = 36;
-export const EVIDENCE_WORLD_PRESET: PresetId = "homeostat";
+
+/** Second grid size for multi-grid observational arms (1.5× linear). */
+export const EVIDENCE_COLS_G2 = 72;
+export const EVIDENCE_ROWS_G2 = 54;
+
+export type EvidenceGridId = "48x36" | "72x54";
+
+export interface EvidenceGrid {
+  id: EvidenceGridId;
+  cols: number;
+  rows: number;
+}
+
+/** ≥2 explicit grids in the evidence matrix. */
+export const EVIDENCE_GRIDS: readonly EvidenceGrid[] = [
+  { id: "48x36", cols: EVIDENCE_COLS, rows: EVIDENCE_ROWS },
+  { id: "72x54", cols: EVIDENCE_COLS_G2, rows: EVIDENCE_ROWS_G2 },
+];
 /** Series off by default for compact JSONL artifacts; CLI may enable. */
 export const EVIDENCE_MEASUREMENT_INTERVAL = 0;
 
@@ -68,13 +90,23 @@ export type EvidenceArmId =
   | "m2-baseline"
   | "m2-env-no-control"
   | "m2-homeostatic"
+  | "m2-baseline-72x54"
+  | "m2-env-no-control-72x54"
+  | "m2-homeostatic-72x54"
   | "m3-homeostatic"
   | "m3-ultrastable"
+  | "m3-homeostatic-72x54"
+  | "m3-ultrastable-72x54"
   | "m4-setpoint"
   | "m4-viability"
+  | "m4-setpoint-72x54"
+  | "m4-viability-72x54"
   | "m5-central"
   | "m5-local"
-  | "m5-coordinated";
+  | "m5-coordinated"
+  | "m5-central-72x54"
+  | "m5-local-72x54"
+  | "m5-coordinated-72x54";
 
 export interface EvidenceArm {
   id: EvidenceArmId;
@@ -95,6 +127,8 @@ function baseWorld(over: {
   studyCondition: StudyConditionId;
   schedule: DisturbanceSchedule;
   generationLimit: number;
+  cols?: number;
+  rows?: number;
   controllerMode?: ResearchProtocol["controllerMode"];
   organizationMode?: ResearchProtocol["organizationMode"];
 }): Omit<ResearchProtocol, "seedKey" | "repeats"> {
@@ -104,8 +138,8 @@ function baseWorld(over: {
     schedule: over.schedule,
     generationLimit: over.generationLimit,
     measurementInterval: EVIDENCE_MEASUREMENT_INTERVAL,
-    cols: EVIDENCE_COLS,
-    rows: EVIDENCE_ROWS,
+    cols: over.cols ?? EVIDENCE_COLS,
+    rows: over.rows ?? EVIDENCE_ROWS,
     worldPreset: EVIDENCE_WORLD_PRESET,
     repeats: 1,
     controllerMode: over.controllerMode ?? "SetpointError",
@@ -116,131 +150,147 @@ function baseWorld(over: {
   return rest;
 }
 
-/** Named observational arms for the evidence ladder (M2–M5). */
+/** Named observational arms for the evidence ladder (M2–M5), across EVIDENCE_GRIDS. */
 export function buildEvidenceArms(): EvidenceArm[] {
-  const m2Shared = {
-    schedule: { ...M2_SCHEDULE },
-    generationLimit: M2_GENERATION_LIMIT,
-    controllerMode: "SetpointError" as const,
-    organizationMode: "Central" as const,
-  };
-
-  const m2Baseline = baseWorld({ studyCondition: "baseline", ...m2Shared });
-  const m2EnvNoControl = baseWorld({ studyCondition: "envNoControl", ...m2Shared });
-  const m2Homeo = baseWorld({ studyCondition: "homeostatic", ...m2Shared });
-
-  const m3Shared = {
-    schedule: { ...M3_SCHEDULE },
-    generationLimit: M3_GENERATION_LIMIT,
-    controllerMode: "SetpointError" as const,
-    organizationMode: "Central" as const,
-  };
-  const m3Homeo = baseWorld({ studyCondition: "homeostatic", ...m3Shared });
-  const m3Ultra = baseWorld({ studyCondition: "ultrastable", ...m3Shared });
-
-  const m4Base = {
-    ...baseWorld({
-      studyCondition: "homeostatic",
-      schedule: { ...AB_CONTROLLER_SCHEDULE },
-      generationLimit: AB_CONTROLLER_GENERATION_LIMIT,
-      controllerMode: "SetpointError",
-      organizationMode: "Central",
-    }),
-    seedKey: EVIDENCE_SEED_KEYS[0],
-    repeats: 1,
-  };
-  const { setpoint, viability } = abControllerProtocols(m4Base);
-
-  const m5Base = {
-    ...baseWorld({
-      studyCondition: "homeostatic",
-      schedule: { ...ABC_ORGANIZATION_SCHEDULE },
-      generationLimit: ABC_ORGANIZATION_GENERATION_LIMIT,
-      controllerMode: "SetpointError",
-      organizationMode: "Central",
-    }),
-    seedKey: EVIDENCE_SEED_KEYS[0],
-    repeats: 1,
-  };
-  const { central, local, coordinated } = abcOrganizationProtocols(m5Base);
-
   const strip = (p: ResearchProtocol): Omit<ResearchProtocol, "seedKey" | "repeats"> => {
     const { seedKey: _s, repeats: _r, ...rest } = p;
     return rest;
   };
 
-  return [
-    {
-      id: "m2-baseline",
-      milestone: "m2",
-      label: "M2 baseline (no feedback)",
-      factor: "studyCondition=baseline",
-      protocolTemplate: m2Baseline,
-    },
-    {
-      id: "m2-env-no-control",
-      milestone: "m2",
-      label: "M2 env-no-control (env on, adaptive control off)",
-      factor: "studyCondition=envNoControl",
-      protocolTemplate: m2EnvNoControl,
-    },
-    {
-      id: "m2-homeostatic",
-      milestone: "m2",
-      label: "M2 homeostatic (feedback, ultra off)",
-      factor: "studyCondition=homeostatic",
-      protocolTemplate: m2Homeo,
-    },
-    {
-      id: "m3-homeostatic",
-      milestone: "m3",
-      label: "M3 homeostatic under sustained disturbance",
-      factor: "studyCondition=homeostatic",
-      protocolTemplate: m3Homeo,
-    },
-    {
-      id: "m3-ultrastable",
-      milestone: "m3",
-      label: "M3 ultrastable under sustained disturbance",
-      factor: "studyCondition=ultrastable",
-      protocolTemplate: m3Ultra,
-    },
-    {
-      id: "m4-setpoint",
-      milestone: "m4",
-      label: "M4 SetpointError controller",
-      factor: "controllerMode=SetpointError",
-      protocolTemplate: strip(setpoint),
-    },
-    {
-      id: "m4-viability",
-      milestone: "m4",
-      label: "M4 ViabilityBand controller",
-      factor: "controllerMode=ViabilityBand",
-      protocolTemplate: strip(viability),
-    },
-    {
-      id: "m5-central",
-      milestone: "m5",
-      label: "M5 Central organization",
-      factor: "organizationMode=Central",
-      protocolTemplate: strip(central),
-    },
-    {
-      id: "m5-local",
-      milestone: "m5",
-      label: "M5 Local organization",
-      factor: "organizationMode=Local",
-      protocolTemplate: strip(local),
-    },
-    {
-      id: "m5-coordinated",
-      milestone: "m5",
-      label: "M5 Coordinated organization",
-      factor: "organizationMode=Coordinated",
-      protocolTemplate: strip(coordinated),
-    },
-  ];
+  const armId = (base: string, grid: EvidenceGrid): EvidenceArmId =>
+    (grid.id === "48x36" ? base : `${base}-${grid.id}`) as EvidenceArmId;
+
+  const gridFactor = (grid: EvidenceGrid) => `grid=${grid.id}`;
+
+  const arms: EvidenceArm[] = [];
+
+  for (const grid of EVIDENCE_GRIDS) {
+    const geo = { cols: grid.cols, rows: grid.rows };
+    const m2Shared = {
+      schedule: { ...M2_SCHEDULE },
+      generationLimit: M2_GENERATION_LIMIT,
+      controllerMode: "SetpointError" as const,
+      organizationMode: "Central" as const,
+      ...geo,
+    };
+
+    arms.push(
+      {
+        id: armId("m2-baseline", grid),
+        milestone: "m2",
+        label: `M2 baseline (no feedback) ${grid.id}`,
+        factor: `studyCondition=baseline;${gridFactor(grid)}`,
+        protocolTemplate: baseWorld({ studyCondition: "baseline", ...m2Shared }),
+      },
+      {
+        id: armId("m2-env-no-control", grid),
+        milestone: "m2",
+        label: `M2 env-no-control (env on, adaptive control off) ${grid.id}`,
+        factor: `studyCondition=envNoControl;${gridFactor(grid)}`,
+        protocolTemplate: baseWorld({ studyCondition: "envNoControl", ...m2Shared }),
+      },
+      {
+        id: armId("m2-homeostatic", grid),
+        milestone: "m2",
+        label: `M2 homeostatic (feedback, ultra off) ${grid.id}`,
+        factor: `studyCondition=homeostatic;${gridFactor(grid)}`,
+        protocolTemplate: baseWorld({ studyCondition: "homeostatic", ...m2Shared }),
+      },
+    );
+
+    const m3Shared = {
+      schedule: { ...M3_SCHEDULE },
+      generationLimit: M3_GENERATION_LIMIT,
+      controllerMode: "SetpointError" as const,
+      organizationMode: "Central" as const,
+      ...geo,
+    };
+    arms.push(
+      {
+        id: armId("m3-homeostatic", grid),
+        milestone: "m3",
+        label: `M3 homeostatic under sustained disturbance ${grid.id}`,
+        factor: `studyCondition=homeostatic;${gridFactor(grid)}`,
+        protocolTemplate: baseWorld({ studyCondition: "homeostatic", ...m3Shared }),
+      },
+      {
+        id: armId("m3-ultrastable", grid),
+        milestone: "m3",
+        label: `M3 ultrastable under sustained disturbance ${grid.id}`,
+        factor: `studyCondition=ultrastable;${gridFactor(grid)}`,
+        protocolTemplate: baseWorld({ studyCondition: "ultrastable", ...m3Shared }),
+      },
+    );
+
+    const m4Base = {
+      ...baseWorld({
+        studyCondition: "homeostatic",
+        schedule: { ...AB_CONTROLLER_SCHEDULE },
+        generationLimit: AB_CONTROLLER_GENERATION_LIMIT,
+        controllerMode: "SetpointError",
+        organizationMode: "Central",
+        ...geo,
+      }),
+      seedKey: EVIDENCE_SEED_KEYS[0],
+      repeats: 1,
+    };
+    const { setpoint, viability } = abControllerProtocols(m4Base);
+    arms.push(
+      {
+        id: armId("m4-setpoint", grid),
+        milestone: "m4",
+        label: `M4 SetpointError controller ${grid.id}`,
+        factor: `controllerMode=SetpointError;${gridFactor(grid)}`,
+        protocolTemplate: strip(setpoint),
+      },
+      {
+        id: armId("m4-viability", grid),
+        milestone: "m4",
+        label: `M4 ViabilityBand controller ${grid.id}`,
+        factor: `controllerMode=ViabilityBand;${gridFactor(grid)}`,
+        protocolTemplate: strip(viability),
+      },
+    );
+
+    const m5Base = {
+      ...baseWorld({
+        studyCondition: "homeostatic",
+        schedule: { ...ABC_ORGANIZATION_SCHEDULE },
+        generationLimit: ABC_ORGANIZATION_GENERATION_LIMIT,
+        controllerMode: "SetpointError",
+        organizationMode: "Central",
+        ...geo,
+      }),
+      seedKey: EVIDENCE_SEED_KEYS[0],
+      repeats: 1,
+    };
+    const { central, local, coordinated } = abcOrganizationProtocols(m5Base);
+    arms.push(
+      {
+        id: armId("m5-central", grid),
+        milestone: "m5",
+        label: `M5 Central organization ${grid.id}`,
+        factor: `organizationMode=Central;${gridFactor(grid)}`,
+        protocolTemplate: strip(central),
+      },
+      {
+        id: armId("m5-local", grid),
+        milestone: "m5",
+        label: `M5 Local organization ${grid.id}`,
+        factor: `organizationMode=Local;${gridFactor(grid)}`,
+        protocolTemplate: strip(local),
+      },
+      {
+        id: armId("m5-coordinated", grid),
+        milestone: "m5",
+        label: `M5 Coordinated organization ${grid.id}`,
+        factor: `organizationMode=Coordinated;${gridFactor(grid)}`,
+        protocolTemplate: strip(coordinated),
+      },
+    );
+  }
+
+  return arms;
 }
 
 export function resolveSeedKeys(n: number): number[] {
@@ -351,7 +401,9 @@ export function exportArmCsv(armResult: EvidenceArmResult): string {
 export function validateEvidenceMatrix(): { ok: true; arms: EvidenceArm[] } | { ok: false; error: string } {
   try {
     const arms = buildEvidenceArms();
-    if (arms.length < 10) return { ok: false, error: `expected ≥10 arms, got ${arms.length}` };
+    // 10 contrast families × ≥2 grids
+    if (arms.length < 20) return { ok: false, error: `expected ≥20 arms, got ${arms.length}` };
+    if (EVIDENCE_GRIDS.length < 2) return { ok: false, error: "expected ≥2 evidence grids" };
     const ids = new Set(arms.map((a) => a.id));
     if (ids.size !== arms.length) return { ok: false, error: "duplicate arm ids" };
     for (const a of arms) {
@@ -362,24 +414,36 @@ export function validateEvidenceMatrix(): { ok: true; arms: EvidenceArm[] } | { 
       });
       if (!v.ok) return { ok: false, error: `${a.id}: ${v.error}` };
     }
-    // Pairing invariants
-    const m2 = arms.filter((a) => a.milestone === "m2");
-    if (m2.length !== 3) return { ok: false, error: "M2 must have 3 arms" };
-    for (let i = 1; i < m2.length; i++) {
-      if (m2[0].protocolTemplate.schedule.id !== m2[i].protocolTemplate.schedule.id) {
-        return { ok: false, error: "M2 arms must share schedule" };
+    const grids = new Set(arms.map((a) => `${a.protocolTemplate.cols}x${a.protocolTemplate.rows}`));
+    if (grids.size < 2) return { ok: false, error: "arms must span ≥2 grid sizes" };
+
+    // Pairing invariants (per grid)
+    for (const grid of EVIDENCE_GRIDS) {
+      const m2 = arms.filter(
+        (a) => a.milestone === "m2" && a.protocolTemplate.cols === grid.cols && a.protocolTemplate.rows === grid.rows,
+      );
+      if (m2.length !== 3) return { ok: false, error: `M2 must have 3 arms at ${grid.id}` };
+      for (let i = 1; i < m2.length; i++) {
+        if (m2[0].protocolTemplate.schedule.id !== m2[i].protocolTemplate.schedule.id) {
+          return { ok: false, error: `M2 arms must share schedule at ${grid.id}` };
+        }
+        if (m2[0].protocolTemplate.generationLimit !== m2[i].protocolTemplate.generationLimit) {
+          return { ok: false, error: `M2 arms must share generationLimit at ${grid.id}` };
+        }
       }
-      if (m2[0].protocolTemplate.generationLimit !== m2[i].protocolTemplate.generationLimit) {
-        return { ok: false, error: "M2 arms must share generationLimit" };
+      const m4 = arms.filter(
+        (a) => a.milestone === "m4" && a.protocolTemplate.cols === grid.cols && a.protocolTemplate.rows === grid.rows,
+      );
+      if (m4.length !== 2) return { ok: false, error: `M4 must have 2 arms at ${grid.id}` };
+      if (m4[0].protocolTemplate.controllerMode === m4[1].protocolTemplate.controllerMode) {
+        return { ok: false, error: `M4 arms must differ in controllerMode at ${grid.id}` };
       }
+      const m5 = arms.filter(
+        (a) => a.milestone === "m5" && a.protocolTemplate.cols === grid.cols && a.protocolTemplate.rows === grid.rows,
+      );
+      const org = new Set(m5.map((a) => a.protocolTemplate.organizationMode));
+      if (org.size !== 3) return { ok: false, error: `M5 must cover Central|Local|Coordinated at ${grid.id}` };
     }
-    const m4 = arms.filter((a) => a.milestone === "m4");
-    if (m4[0].protocolTemplate.controllerMode === m4[1].protocolTemplate.controllerMode) {
-      return { ok: false, error: "M4 arms must differ in controllerMode" };
-    }
-    const m5 = arms.filter((a) => a.milestone === "m5");
-    const org = new Set(m5.map((a) => a.protocolTemplate.organizationMode));
-    if (org.size !== 3) return { ok: false, error: "M5 must cover Central|Local|Coordinated" };
     return { ok: true, arms };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };

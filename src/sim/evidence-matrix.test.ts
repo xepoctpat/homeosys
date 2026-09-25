@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   buildEvidenceArms,
   EVIDENCE_DEFAULT_N,
+  EVIDENCE_GRIDS,
   EVIDENCE_SEED_KEYS,
   exportArmJsonl,
   resolveSeedKeys,
@@ -11,42 +12,45 @@ import {
   validateEvidenceMatrix,
 } from "./evidence-matrix.ts";
 
-test("validateEvidenceMatrix accepts all M2–M5 arms", () => {
+test("validateEvidenceMatrix accepts all M2–M5 arms across grids", () => {
   const v = validateEvidenceMatrix();
   assert.equal(v.ok, true);
   if (!v.ok) return;
-  assert.equal(v.arms.length, 10);
+  assert.equal(v.arms.length, 20);
+  assert.ok(EVIDENCE_GRIDS.length >= 2);
   assert.equal(EVIDENCE_SEED_KEYS.length, EVIDENCE_DEFAULT_N);
+  assert.equal(EVIDENCE_DEFAULT_N, 20);
+  const grids = new Set(v.arms.map((a) => `${a.protocolTemplate.cols}x${a.protocolTemplate.rows}`));
+  assert.ok(grids.has("48x36"));
+  assert.ok(grids.has("72x54"));
 });
 
-test("M2 arms share schedule/limit/world and contrast studyCondition", () => {
+test("M2 arms share schedule/limit within each grid and contrast studyCondition", () => {
   const arms = buildEvidenceArms().filter((a) => a.milestone === "m2");
-  assert.equal(arms.length, 3);
-  assert.deepEqual(
-    arms.map((a) => a.id),
-    ["m2-baseline", "m2-env-no-control", "m2-homeostatic"],
-  );
-  for (let i = 1; i < arms.length; i++) {
-    assert.equal(arms[0].protocolTemplate.schedule.id, arms[i].protocolTemplate.schedule.id);
-    assert.equal(arms[0].protocolTemplate.generationLimit, arms[i].protocolTemplate.generationLimit);
-    assert.equal(arms[0].protocolTemplate.cols, arms[i].protocolTemplate.cols);
-    assert.equal(arms[0].protocolTemplate.rows, arms[i].protocolTemplate.rows);
-    assert.equal(arms[0].protocolTemplate.worldPreset, arms[i].protocolTemplate.worldPreset);
+  assert.equal(arms.length, 6);
+  for (const grid of EVIDENCE_GRIDS) {
+    const gArms = arms.filter(
+      (a) => a.protocolTemplate.cols === grid.cols && a.protocolTemplate.rows === grid.rows,
+    );
+    assert.equal(gArms.length, 3);
+    for (let i = 1; i < gArms.length; i++) {
+      assert.equal(gArms[0].protocolTemplate.schedule.id, gArms[i].protocolTemplate.schedule.id);
+      assert.equal(gArms[0].protocolTemplate.generationLimit, gArms[i].protocolTemplate.generationLimit);
+      assert.equal(gArms[0].protocolTemplate.worldPreset, gArms[i].protocolTemplate.worldPreset);
+    }
+    assert.equal(gArms[0].protocolTemplate.controllerMode, "SetpointError");
+    assert.equal(gArms[0].protocolTemplate.organizationMode, "Central");
+    const conditions = new Set(gArms.map((a) => a.protocolTemplate.studyCondition));
+    assert.equal(conditions.size, 3);
   }
-  assert.equal(arms[0].protocolTemplate.controllerMode, "SetpointError");
-  assert.equal(arms[0].protocolTemplate.organizationMode, "Central");
-  const conditions = new Set(arms.map((a) => a.protocolTemplate.studyCondition));
-  assert.equal(conditions.size, 3);
-  assert.ok(conditions.has("baseline"));
-  assert.ok(conditions.has("envNoControl"));
-  assert.ok(conditions.has("homeostatic"));
+  assert.ok(arms.some((a) => a.id === "m2-baseline"));
+  assert.ok(arms.some((a) => a.id === "m2-baseline-72x54"));
 });
 
 test("M3 arms share sustained schedule and expose ultra fields after smoke run", () => {
   const arms = buildEvidenceArms().filter((a) => a.milestone === "m3");
-  assert.equal(arms.length, 2);
-  assert.equal(arms[0].protocolTemplate.schedule.id, "sustained");
-  assert.equal(arms[1].protocolTemplate.schedule.id, "sustained");
+  assert.equal(arms.length, 4);
+  for (const a of arms) assert.equal(a.protocolTemplate.schedule.id, "sustained");
   const ultra = arms.find((a) => a.id === "m3-ultrastable");
   assert.ok(ultra);
   const ran = runEvidenceArm(ultra!, { n: 1, collectSeries: false });
@@ -64,14 +68,15 @@ test("M3 arms share sustained schedule and expose ultra fields after smoke run",
 
 test("M4 reuses abControllerProtocols contrast; M5 reuses abcOrganizationProtocols", () => {
   const m4 = buildEvidenceArms().filter((a) => a.milestone === "m4");
+  assert.equal(m4.length, 4);
   assert.deepEqual(
-    m4.map((a) => a.protocolTemplate.controllerMode).sort(),
+    [...new Set(m4.map((a) => a.protocolTemplate.controllerMode))].sort(),
     ["SetpointError", "ViabilityBand"],
   );
-  assert.equal(m4[0].protocolTemplate.schedule.id, m4[1].protocolTemplate.schedule.id);
   const m5 = buildEvidenceArms().filter((a) => a.milestone === "m5");
+  assert.equal(m5.length, 6);
   assert.deepEqual(
-    m5.map((a) => a.protocolTemplate.organizationMode).sort(),
+    [...new Set(m5.map((a) => a.protocolTemplate.organizationMode))].sort(),
     ["Central", "Coordinated", "Local"],
   );
 });
