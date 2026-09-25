@@ -103,13 +103,34 @@ export const M2_SWEEP_SCHEDULE_BY_ID: Record<DisturbanceScheduleId, DisturbanceS
     amplitude: M2_SCHEDULE.amplitude,
   },
   pulse: { ...M2_SCHEDULE },
+  /** Anatomy: long pulse rectangle (duration=120) — characterization micro-sweep only. */
+  pulseLong: {
+    id: "pulseLong",
+    startGen: 40,
+    duration: 120,
+    amplitude: 0.55,
+  },
   sustained: { ...M3_SCHEDULE },
+  /** Anatomy: short sustained window (duration=30) — characterization micro-sweep only. */
+  sustainedShort: {
+    id: "sustainedShort",
+    startGen: 30,
+    duration: 30,
+    amplitude: 0.55,
+  },
 };
 
+/** Ladder default schedule levels — must NOT auto-expand anatomy ids. */
 export const M2_SWEEP_SCHEDULE_IDS = [
   "none",
   "pulse",
   "sustained",
+] as const satisfies readonly DisturbanceScheduleId[];
+
+/** Schedule anatomy ids for duration-vs-family characterization micro-sweeps. */
+export const M2_SWEEP_ANATOMY_SCHEDULE_IDS = [
+  "sustainedShort",
+  "pulseLong",
 ] as const satisfies readonly DisturbanceScheduleId[];
 
 /** Defaults when an axis is not expanded (M2 canonical). */
@@ -209,6 +230,16 @@ export function assertM2SweepSpec(spec: M2SweepSpec = {}): asserts spec is M2Swe
       if (!(M2_SWEEP_COORD_COUPLING_ALPHAS as readonly number[]).includes(a)) {
         throw new Error(
           `coordCouplingAlpha level ${a} not in discrete allowlist {${M2_SWEEP_COORD_COUPLING_ALPHAS.join(", ")}}`,
+        );
+      }
+    }
+  }
+  if (spec.levels?.schedule) {
+    const known = new Set(Object.keys(M2_SWEEP_SCHEDULE_BY_ID));
+    for (const id of spec.levels.schedule) {
+      if (!known.has(id)) {
+        throw new Error(
+          `schedule level "${id}" not in M2_SWEEP_SCHEDULE_BY_ID {${[...known].join(", ")}}`,
         );
       }
     }

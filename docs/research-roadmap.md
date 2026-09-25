@@ -119,7 +119,7 @@ or recover to, `K` under a declared disturbance schedule.
 
 Locked runs and evidence exports carry a full **ThetaV0** object (`schemaVersion: "theta.v0"`) including env knobs, schedule, seed, and rule. See [`docs/theta-v0.md`](theta-v0.md).
 
-**C3 M2 ladder-factor sweep** expands only: studyCondition / controllerMode / organizationMode / coordCouplingAlpha∈{0,0.3} / schedule∈{none,pulse,sustained}. Continuous gains are not sweep axes. Observational ≠ closure; M6 gated; no E1 eng platform yet.
+**C3 M2 ladder-factor sweep** expands only: studyCondition / controllerMode / organizationMode / coordCouplingAlpha∈{0,0.3} / schedule∈{none,pulse,sustained} (ladder default). Anatomy ids `sustainedShort`|`pulseLong` are registered for characterization micro-sweeps only (not auto-expanded). Continuous gains are not sweep axes. Observational ≠ closure; M6 gated; no E1 eng platform yet.
 
 ## Research sequence
 

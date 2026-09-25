@@ -40,11 +40,12 @@ export function computeDisturbanceW(t: number, schedule: DisturbanceSchedule): n
   const amp = Math.max(0, Math.min(1, schedule.amplitude));
   if (schedule.id === "none" || amp <= 0) return 0;
   if (t < schedule.startGen) return 0;
-  if (schedule.id === "pulse") {
+  // pulse family = pulse|pulseLong (finite rectangle; duration<=0 ⇒ always off)
+  if (schedule.id === "pulse" || schedule.id === "pulseLong") {
     if (schedule.duration <= 0) return 0;
     return t < schedule.startGen + schedule.duration ? amp : 0;
   }
-  // sustained
+  // sustained family = sustained|sustainedShort (finite window, or open-ended if duration=0)
   if (schedule.duration > 0 && t >= schedule.startGen + schedule.duration) return 0;
   return amp;
 }

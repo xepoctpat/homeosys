@@ -16,6 +16,8 @@ import {
   M2_SWEEP_CONTROLLER_MODES,
   M2_SWEEP_ORGANIZATION_MODES,
   M2_SWEEP_REFUSED_AXES,
+  M2_SWEEP_ANATOMY_SCHEDULE_IDS,
+  M2_SWEEP_SCHEDULE_BY_ID,
   M2_SWEEP_SCHEDULE_IDS,
   M2_SWEEP_STUDY_CONDITIONS,
   assertM2SweepSpec,
@@ -228,4 +230,49 @@ test("refuse continuous axes still throws (CLI exits 2)", () => {
     () => buildM2LadderSweepArms({ expandAxes: ["organizationMode", "climate"] }),
     /climate/,
   );
+});
+
+
+test("ladder default schedule levels stay 3 (anatomy ids not auto-expanded)", () => {
+  assert.deepEqual([...M2_SWEEP_SCHEDULE_IDS], ["none", "pulse", "sustained"]);
+  assert.deepEqual([...M2_SWEEP_ANATOMY_SCHEDULE_IDS], ["sustainedShort", "pulseLong"]);
+  assert.ok(M2_SWEEP_SCHEDULE_BY_ID.sustainedShort);
+  assert.ok(M2_SWEEP_SCHEDULE_BY_ID.pulseLong);
+  assert.equal(M2_SWEEP_SCHEDULE_BY_ID.sustainedShort.startGen, 30);
+  assert.equal(M2_SWEEP_SCHEDULE_BY_ID.sustainedShort.duration, 30);
+  assert.equal(M2_SWEEP_SCHEDULE_BY_ID.pulseLong.startGen, 40);
+  assert.equal(M2_SWEEP_SCHEDULE_BY_ID.pulseLong.duration, 120);
+});
+
+test("anatomy schedule levels × controllerMode × dual grid → 8 arms", () => {
+  const cells = buildM2SweepFactorCells({
+    expandAxes: ["controllerMode", "schedule"],
+    levels: { schedule: [...M2_SWEEP_ANATOMY_SCHEDULE_IDS] },
+  });
+  // 2 ctrl × 2 anatomy sched = 4 factor cells (org/α/study fixed)
+  assert.equal(cells.length, 4);
+  for (const c of cells) {
+    assert.equal(c.studyCondition, "homeostatic");
+    assert.equal(c.organizationMode, "Central");
+    assert.ok(
+      M2_SWEEP_ANATOMY_SCHEDULE_IDS.includes(
+        c.scheduleId as (typeof M2_SWEEP_ANATOMY_SCHEDULE_IDS)[number],
+      ),
+    );
+  }
+  const arms = buildM2LadderSweepArms({
+    expandAxes: ["controllerMode", "schedule"],
+    levels: { schedule: [...M2_SWEEP_ANATOMY_SCHEDULE_IDS] },
+  });
+  assert.equal(arms.length, 8); // 4 × 2 grids
+  assert.equal(arms.filter((a) => a.id.includes("__g=48x36__")).length, 4);
+  assert.equal(arms.filter((a) => a.id.includes("__g=72x54__")).length, 4);
+  for (const arm of arms) {
+    const sid = arm.protocolTemplate.schedule.id;
+    assert.ok(sid === "sustainedShort" || sid === "pulseLong");
+    assert.equal(
+      arm.protocolTemplate.schedule.duration,
+      M2_SWEEP_SCHEDULE_BY_ID[sid].duration,
+    );
+  }
 });

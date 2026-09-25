@@ -31,11 +31,13 @@ import {
 } from "../src/sim/evidence-matrix.ts";
 import {
   M2_LADDER_SWEEP_AXES,
+  M2_SWEEP_SCHEDULE_BY_ID,
   assertM2SweepSpec,
   resolveM2SweepGrids,
   runM2LadderSweep,
   type M2LadderSweepAxis,
 } from "../src/sim/m2-ladder-sweep.ts";
+import type { DisturbanceScheduleId } from "../src/sim/types.ts";
 import { evidenceDirPair, resolveEvidenceOutDir } from "./evidence-out-guard.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -54,6 +56,7 @@ function parseArgs(argv: string[]) {
   let sweepGrids: EvidenceGrid[] | undefined;
   let sweepCols: number | undefined;
   let sweepRows: number | undefined;
+  let sweepScheduleLevels: DisturbanceScheduleId[] | undefined;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--n" && argv[i + 1]) {
@@ -88,11 +91,24 @@ function parseArgs(argv: string[]) {
       sweepCols = Number(argv[++i]);
     } else if (a === "--sweep-rows" && argv[i + 1]) {
       sweepRows = Number(argv[++i]);
+    } else if (a === "--sweep-schedule-levels" && argv[i + 1]) {
+      const ids = argv[++i].split(",").map((s) => s.trim());
+      const known = new Set(Object.keys(M2_SWEEP_SCHEDULE_BY_ID));
+      for (const id of ids) {
+        if (!known.has(id)) {
+          console.error(
+            `Unknown schedule level "${id}". Known: ${[...known].join(", ")}`,
+          );
+          process.exit(2);
+        }
+      }
+      sweepScheduleLevels = ids as DisturbanceScheduleId[];
     } else if (a === "--help" || a === "-h") {
       console.log(
         "Usage: tsx scripts/run-evidence.ts [--n N] [--out DIR] [--milestones m2,m3,m4,m5] [--write|--commit-artifacts] [--no-csv]\n" +
-          "       tsx scripts/run-evidence.ts --sweep-m2 [--sweep-axes AXIS,...] [--sweep-grids 48x36,72x54] [--n N] [--out DIR] [--write]\n" +
+          "       tsx scripts/run-evidence.ts --sweep-m2 [--sweep-axes AXIS,...] [--sweep-schedule-levels ID,...] [--sweep-grids 48x36,72x54] [--n N] [--out DIR] [--write]\n" +
           "       Cheap single-grid smoke: --sweep-grids 48x36  OR  --sweep-cols 48 --sweep-rows 36\n" +
+          "       Anatomy micro-sweep: --sweep-schedule-levels sustainedShort,pulseLong\n" +
           `Default out: evidence/_smoke (gitignored). Sweep axes allowlist: ${M2_LADDER_SWEEP_AXES.join(", ")}.\n` +
           `Default sweep grids: ${EVIDENCE_GRIDS.map((g) => g.id).join(", ")} (dual).\n` +
           "Continuous gains (homeoGain/climate/…) refused. Observational ≠ closure; M6 gated.",
@@ -111,7 +127,7 @@ function parseArgs(argv: string[]) {
     console.error(err instanceof Error ? err.message : err);
     process.exit(2);
   }
-  return { n, outDir, milestones, csv, writeCommitted, sweepM2, sweepAxes, sweepGrids, sweepCols, sweepRows };
+  return { n, outDir, milestones, csv, writeCommitted, sweepM2, sweepAxes, sweepGrids, sweepCols, sweepRows, sweepScheduleLevels };
 }
 
 function folderReadme(milestone: EvidenceMilestone | "m2-sweep"): string {
@@ -202,6 +218,9 @@ function runSweep(args: ReturnType<typeof parseArgs>) {
     grids: args.sweepGrids,
     cols: args.sweepCols,
     rows: args.sweepRows,
+    levels: args.sweepScheduleLevels
+      ? { schedule: args.sweepScheduleLevels }
+      : undefined,
   };
   const grids = resolveM2SweepGrids(sweepSpec);
   console.log(

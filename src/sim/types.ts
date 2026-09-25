@@ -52,7 +52,12 @@ export const PROVISIONAL_K: ViableRegion = {
 export { PROTOCOL_CALIBRATED_K, K_CALIBRATION_META, K_CALIBRATION_METHOD } from "./calibrated-k.ts";
 
 /** Named disturbance schedule id — world/disturbance layer, never a loop flag. */
-export type DisturbanceScheduleId = "none" | "pulse" | "sustained";
+export type DisturbanceScheduleId =
+  | "none"
+  | "pulse"
+  | "pulseLong"
+  | "sustained"
+  | "sustainedShort";
 
 /**
  * Controller / policy mode for the fast homeostasis loop (M4).
@@ -139,8 +144,8 @@ export interface DisturbanceSchedule {
   startGen: number;
   /**
    * Window length in generations.
-   * pulse: on-duration after startGen.
-   * sustained: finite length after startGen; 0 = open-ended from startGen.
+   * pulse family (pulse|pulseLong): finite rectangle on-duration after startGen.
+   * sustained family (sustained|sustainedShort): finite length after startGen; 0 = open-ended from startGen.
    */
   duration: number;
   /** Peak disturbance amplitude in [0, 1]. Provisional default. */
@@ -155,7 +160,13 @@ export const PROVISIONAL_SCHEDULE: DisturbanceSchedule = {
   amplitude: 0.55,
 };
 
-const SCHEDULE_IDS: DisturbanceScheduleId[] = ["none", "pulse", "sustained"];
+export const SCHEDULE_IDS: DisturbanceScheduleId[] = [
+  "none",
+  "pulse",
+  "pulseLong",
+  "sustained",
+  "sustainedShort",
+];
 
 function finiteNumber(n: unknown, fallback: number): number {
   return typeof n === "number" && Number.isFinite(n) ? n : fallback;

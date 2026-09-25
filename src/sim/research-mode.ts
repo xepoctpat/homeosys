@@ -5,6 +5,7 @@ import {
   STUDY_CONDITIONS,
   normalizeControllerMode,
   normalizeDisturbance,
+  SCHEDULE_IDS,
   normalizeOrganizationMode,
   normalizeSimSettings,
   type ControllerMode,
@@ -307,9 +308,12 @@ export function validateProtocol(
   const scheduleRaw = input.schedule;
   if (
     !scheduleRaw ||
-    (scheduleRaw.id !== "none" && scheduleRaw.id !== "pulse" && scheduleRaw.id !== "sustained")
+    !SCHEDULE_IDS.includes(scheduleRaw.id as (typeof SCHEDULE_IDS)[number])
   ) {
-    return { ok: false, error: "Disturbance schedule id must be none|pulse|sustained." };
+    return {
+      ok: false,
+      error: `Disturbance schedule id must be ${SCHEDULE_IDS.join("|")}.`,
+    };
   }
   const schedule = normalizeDisturbance(scheduleRaw);
 

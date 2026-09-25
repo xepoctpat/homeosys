@@ -288,6 +288,32 @@ test("settingsFromProtocol normalizes schedule via normalizeSimSettings", () => 
   assert.ok(Number.isFinite(built.disturbance.amplitude));
 });
 
+test("validateProtocol accepts anatomy schedule ids sustainedShort|pulseLong", () => {
+  for (const id of ["sustainedShort", "pulseLong"] as const) {
+    const result = validateProtocol({
+      seedKey: 0xc0ffee,
+      studyCondition: "homeostatic",
+      schedule: {
+        id,
+        startGen: id === "sustainedShort" ? 30 : 40,
+        duration: id === "sustainedShort" ? 30 : 120,
+        amplitude: 0.55,
+      },
+      generationLimit: 30,
+      measurementInterval: 10,
+      cols: 48,
+      rows: 36,
+      worldPreset: "classic",
+      repeats: 3,
+      controllerMode: "SetpointError",
+      organizationMode: "Central",
+      coordCouplingAlpha: 0.3,
+    });
+    assert.equal(result.ok, true);
+    if (result.ok) assert.equal(result.protocol.schedule.id, id);
+  }
+});
+
 test("validateProtocol / captureProtocol include controllerMode", () => {
   const result = validateProtocol(baseProtocol({ controllerMode: "ViabilityBand" }));
   assert.equal(result.ok, true);

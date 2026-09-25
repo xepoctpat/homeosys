@@ -439,6 +439,42 @@ test("sustained schedule stays on after start (open-ended when duration 0)", () 
   assert.equal(computeDisturbanceW(6, finite), 0);
 });
 
+test("pulseLong follows pulse-family finite rectangle (not sustained)", () => {
+  const d: DisturbanceSchedule = {
+    id: "pulseLong",
+    startGen: 40,
+    duration: 120,
+    amplitude: 0.55,
+  };
+  assert.equal(computeDisturbanceW(39, d), 0);
+  assert.equal(computeDisturbanceW(40, d), 0.55);
+  assert.equal(computeDisturbanceW(159, d), 0.55);
+  assert.equal(computeDisturbanceW(160, d), 0);
+  // duration<=0 ⇒ always off (pulse family)
+  assert.equal(
+    computeDisturbanceW(50, { ...d, duration: 0 }),
+    0,
+  );
+});
+
+test("sustainedShort follows sustained-family finite window", () => {
+  const d: DisturbanceSchedule = {
+    id: "sustainedShort",
+    startGen: 30,
+    duration: 30,
+    amplitude: 0.55,
+  };
+  assert.equal(computeDisturbanceW(29, d), 0);
+  assert.equal(computeDisturbanceW(30, d), 0.55);
+  assert.equal(computeDisturbanceW(59, d), 0.55);
+  assert.equal(computeDisturbanceW(60, d), 0);
+  // duration=0 ⇒ open-ended (sustained family)
+  assert.equal(
+    computeDisturbanceW(300, { ...d, duration: 0 }),
+    0.55,
+  );
+});
+
 test("study pack apply does not change schedule id or params", () => {
   const disturbance: DisturbanceSchedule = {
     id: "pulse",

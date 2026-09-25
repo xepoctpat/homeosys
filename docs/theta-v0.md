@@ -42,11 +42,13 @@ K + run: `densityMin`, `densityMax` (default `PROTOCOL_CALIBRATED_K`), `generati
 | `controllerMode` | `SetpointError` \| `ViabilityBand` |
 | `organizationMode` | `Central` \| `Local` \| `Coordinated` |
 | `coordCouplingAlpha` | `{0, 0.3}` only (meaningful when Coordinated; α-sweep forces Coordinated) |
-| `schedule` | named ids `none` \| `pulse` \| `sustained` (not a continuous float grid) |
+| `schedule` | ladder default `none` \| `pulse` \| `sustained`; anatomy micro-sweep also `sustainedShort` \| `pulseLong` (occupancy/CA characterization; observational ≠ closure) |
 
 Continuous gains (`homeoGain`, `climate`, `seasonRate`, `noise`, …) are **refused** as sweep axes (`assertM2SweepSpec` / `isAllowedM2SweepAxis`) — still stamped in ThetaV0 for completeness. Default smoke expands `studyCondition` only; full matrix via `--sweep-axes` / `expandAxes`. CLI: `npm run evidence -- --sweep-m2` → `evidence/_smoke/m2-sweep/` (write-guard unchanged).
 
 **Eng dual-grid expand @ `c1a979c`:** code runs 48×36+72×54 arms in one sweep; default/full matrix still ladder-factor discrete axes only. **Shared-disk smoke** (gitignored; not committed; not closure): `evidence/_smoke/m2-thick-20260925-212913/` (48-arm homeostatic thick) + `evidence/_smoke/m2-thick-sc-20260925-222647/` (144-arm sc×thick; 144/144 ok). **Characterization PARK** after sc×thick; **E1 not started.** **M6 HARD-GATED.** Observational ≠ closure.
+
+**Schedule anatomy ids** (`sustainedShort`, `pulseLong`) exist for duration-vs-family micro-sweeps (`M2_SWEEP_ANATOMY_SCHEDULE_IDS` / `--sweep-schedule-levels`); ladder default `M2_SWEEP_SCHEDULE_IDS` stays `none|pulse|sustained` only. Occupancy/CA language; observational ≠ closure.
 
 **Observational ≠ scientific closure. M6 HARD-GATED. No E1 eng platform / multi-system / UI theater.**
 
