@@ -40,6 +40,16 @@ function metrics(overrides: Partial<Metrics> = {}): Metrics {
     lastEnterGeneration: null,
     recoveries: 0,
     settlingTime: null,
+    scheduleId: "none",
+    w: 0,
+    scheduleStartGen: 50,
+    scheduleDuration: 25,
+    scheduleAmplitude: 0.55,
+    generationLimit: 0,
+    measurementInterval: 10,
+    measureCount: 0,
+    shouldMeasure: false,
+    limitReached: false,
     ...overrides,
   };
 }

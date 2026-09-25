@@ -164,6 +164,7 @@ export function AppShell() {
   const onMetrics = useCallback(() => {
     const snap = engine.snapshot();
     setMetrics(snap);
+    if (snap.limitReached) setRunning(false);
     const audio = audioRef.current;
     if (audio) {
       audio.tick(snap.density, snap.viability);
@@ -206,10 +207,12 @@ export function AppShell() {
     audioRef.current?.unlock();
     recordAction("step");
     setRunning(false);
-    engine.step();
-    engine.advanceDisplay(0.08, false);
+    if (!engine.limitReached()) {
+      engine.step();
+      engine.advanceDisplay(0.08, false);
+      audioRef.current?.blip("step");
+    }
     onMetrics();
-    audioRef.current?.blip("step");
   }, [engine, onMetrics, recordAction]);
 
   const applyPreset = useCallback(

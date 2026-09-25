@@ -8,6 +8,7 @@ import {
   DEFAULT_SETTINGS,
   LOOP_META,
   PROVISIONAL_K,
+  type DisturbanceSchedule,
   type Genome,
   type LoopFlag,
   type LoopId,
@@ -16,6 +17,34 @@ import {
   type PresetId,
   type SimSettings,
 } from "./types.ts";
+
+/**
+ * Deterministic schedule disturbance w(t).
+ *
+ * Formula (provisional):
+ *   none:      w = 0
+ *   pulse:     w = amplitude for t in [startGen, startGen + duration), else 0
+ *   sustained: w = amplitude for t >= startGen (and t < startGen + duration if duration > 0)
+ *
+ * Interaction with environment: schedule is an *additive dedicated channel*.
+ * Continuous climate/season/noise knobs still require settings.environment.
+ * Schedule injects heat offset + energy drain + soft survival stress even when
+ * environment is off, so baseline packs can still receive a declared w(t).
+ * Schedule never flips cybernetics / ultra / homeo loop flags.
+ * Same schedule params ⇒ same w(t) series (pure function of t + schedule).
+ */
+export function computeDisturbanceW(t: number, schedule: DisturbanceSchedule): number {
+  const amp = Math.max(0, Math.min(1, schedule.amplitude));
+  if (schedule.id === "none" || amp <= 0) return 0;
+  if (t < schedule.startGen) return 0;
+  if (schedule.id === "pulse") {
+    if (schedule.duration <= 0) return 0;
+    return t < schedule.startGen + schedule.duration ? amp : 0;
+  }
+  // sustained
+  if (schedule.duration > 0 && t >= schedule.startGen + schedule.duration) return 0;
+  return amp;
+}
 
 const TEST_WINDOW = 36;
 const HISTORY = 96;
@@ -137,6 +166,11 @@ export class SimEngine {
   private recoveries = 0;
   private prevInK: boolean | null = null;
   private lastInK = false;
+  /** Last computed schedule disturbance w(t). */
+  private lastW = 0;
+  private measureCount = 0;
+  private shouldMeasure = false;
+  private lastMeasureGen = -1;
 
   allocate(cols: number, rows: number): void {
     this.cols = cols;
@@ -462,13 +496,26 @@ export class SimEngine {
     }
   }
 
+  /** True when generationLimit > 0 and generation has reached it. */
+  limitReached(): boolean {
+    return this.settings.generationLimit > 0 && this.generation >= this.settings.generationLimit;
+  }
+
   step(): void {
     if (this.cols === 0) return;
+    if (this.limitReached()) return;
     this.resetNotes();
     const { cols, rows, settings } = this;
     const n = cols * rows;
     const envOn = settings.environment;
     const cybOn = settings.cybernetics;
+
+    // w(t) from active schedule — computed before the step advances generation.
+    const w = computeDisturbanceW(this.generation, settings.disturbance);
+    this.lastW = w;
+    // Additive dedicated disturbance channel (see computeDisturbanceW docs).
+    const disturbAmbient = w * 0.35;
+    const disturbDrain = w * 0.025;
 
     const seasonPhase = this.generation * (0.004 + settings.seasonRate * 0.012);
     const season = Math.sin(seasonPhase);
@@ -502,36 +549,46 @@ export class SimEngine {
         let h = this.heat[i];
         if (envOn) {
           let well = 0;
-          for (const w of this.wells) {
-            const dx = x - w.x;
-            const dy = y - w.y;
-            const pulse = 0.75 + 0.25 * Math.sin(seasonPhase + w.phase);
-            well += w.amp * pulse * Math.exp(-(dx * dx + dy * dy) / (2 * w.r * w.r));
+          for (const wellDef of this.wells) {
+            const dx = x - wellDef.x;
+            const dy = y - wellDef.y;
+            const pulse = 0.75 + 0.25 * Math.sin(seasonPhase + wellDef.phase);
+            well += wellDef.amp * pulse * Math.exp(-(dx * dx + dy * dy) / (2 * wellDef.r * wellDef.r));
           }
-          const regen = (0.008 + settings.energyRichness * 0.02) * (0.35 + well);
-          e = e + regen - (was ? 0.028 : 0.006);
+          const regen = (0.008 + settings.energyRichness * 0.02) * (0.35 + well) * (1 - w * 0.55);
+          e = e + regen - (was ? 0.028 : 0.006) - disturbDrain;
           if (this.kind[i] && was) e += 0.01;
           e = e < 0 ? 0 : e > 1 ? 1 : e;
 
           const emit = was ? 0.012 * settings.metabolicHeat : 0;
           const cool = 0.08;
-          h = h + (rowAmbient - h) * cool + emit;
+          h = h + (rowAmbient + disturbAmbient - h) * cool + emit;
+          h = h < 0 ? 0 : h > 1 ? 1 : h;
+        } else if (w > 0) {
+          // Dedicated schedule channel when continuous climate env is off.
+          e = e - disturbDrain;
+          e = e < 0 ? 0 : e > 1 ? 1 : e;
+          const cool = 0.08;
+          h = h + (0.5 + disturbAmbient - h) * cool;
           h = h < 0 ? 0 : h > 1 ? 1 : h;
         }
 
         let live = was;
-        const energyGate = !envOn || e > 0.07;
-        const heatShift = envOn ? Math.round((h - 0.5) * 2) : 0;
+        const energyGate = (!envOn && w === 0) || e > 0.07 + w * 0.05;
+        const heatShift =
+          (envOn ? Math.round((h - 0.5) * 2) : 0) + (w > 0 ? Math.round(w * 2) : 0);
         const nEff = Math.max(0, Math.min(8, nb + heatShift));
 
         if (was) {
           live = survive[nEff] ? 1 : 0;
           if (envOn && h > 0.86 && this.rand() < 0.18) live = 0;
           if (envOn && e < 0.05) live = 0;
+          if (w > 0 && this.rand() < w * 0.12) live = 0;
           if (this.kind[i] && nb >= 1 && nb <= 6 && e > 0.08) live = 1;
         } else {
           live = birth[nEff] && energyGate ? 1 : 0;
           if (envOn && h < 0.18 && this.rand() < 0.5) live = 0;
+          if (w > 0 && live && this.rand() < w * 0.08) live = 0;
         }
 
         if (settings.noise > 0 && this.rand() < settings.noise * 0.002) {
@@ -667,6 +724,15 @@ export class SimEngine {
       this.viaHistory.shift();
     }
     this.observeViableRegion(density);
+
+    // Measurement interval hook for later Research mode export.
+    const interval = settings.measurementInterval;
+    this.shouldMeasure = false;
+    if (interval > 0 && this.generation % interval === 0 && this.generation !== this.lastMeasureGen) {
+      this.measureCount++;
+      this.lastMeasureGen = this.generation;
+      this.shouldMeasure = true;
+    }
   }
 
   private runHomeostasis(err: number, density: number, gain: number): void {
@@ -791,6 +857,10 @@ export class SimEngine {
     this.recoveries = 0;
     this.prevInK = null;
     this.lastInK = false;
+    this.lastW = 0;
+    this.measureCount = 0;
+    this.shouldMeasure = false;
+    this.lastMeasureGen = -1;
   }
 
   private densityInK(density: number): boolean {
@@ -872,6 +942,16 @@ export class SimEngine {
       lastEnterGeneration: this.lastEnterGeneration,
       recoveries: this.recoveries,
       settlingTime,
+      scheduleId: this.settings.disturbance.id,
+      w: this.lastW,
+      scheduleStartGen: this.settings.disturbance.startGen,
+      scheduleDuration: this.settings.disturbance.duration,
+      scheduleAmplitude: this.settings.disturbance.amplitude,
+      generationLimit: this.settings.generationLimit,
+      measurementInterval: this.settings.measurementInterval,
+      measureCount: this.measureCount,
+      shouldMeasure: this.shouldMeasure,
+      limitReached: this.limitReached(),
     };
   }
 

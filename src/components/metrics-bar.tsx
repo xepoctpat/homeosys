@@ -41,6 +41,18 @@ export function MetricsBar({ metrics, running }: { metrics: Metrics | null; runn
     { label: "Setpoint", value: metrics ? pct(metrics.setpoint) : "—", hideOnSmall: true },
     { label: "Rule", value: metrics ? metrics.rule : "—" },
     { label: "Seed", value: metrics ? String(metrics.seedKey >>> 0) : "—", hideOnSmall: true },
+    {
+      label: "Schedule",
+      value: metrics ? metrics.scheduleId : "—",
+      hideOnSmall: true,
+      title: "Active disturbance schedule id",
+    },
+    {
+      label: "w",
+      value: metrics ? metrics.w.toFixed(2) : "—",
+      hideOnSmall: true,
+      title: "Current disturbance w(t)",
+    },
   ];
 
   return (

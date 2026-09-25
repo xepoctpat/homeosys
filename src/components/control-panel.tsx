@@ -18,7 +18,9 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
   PRESETS,
+  PROVISIONAL_SCHEDULE,
   STUDY_CONDITIONS,
+  type DisturbanceScheduleId,
   type PaintMode,
   type PresetId,
   type SimSettings,
@@ -270,8 +272,8 @@ export function ControlPanel(props: ControlPanelProps) {
             <div>
               <div className="mb-2 text-sm text-fg">Study conditions</div>
               <p className="mb-2 text-xs leading-relaxed text-subtle">
-                Full packs for environment and loops. World presets still change only
-                environment fields.
+                Loop/env packs for the three-condition table. They do not rewrite the
+                disturbance schedule; World owns w(t).
               </p>
               <div className="flex flex-wrap gap-2">
                 {STUDY_CONDITIONS.map((c) => {
@@ -507,6 +509,147 @@ export function ControlPanel(props: ControlPanelProps) {
                 onChange={(v) => onSettings({ noise: v })}
               />
             </Row>
+            <div className="space-y-3 rounded-lg border border-border bg-raised/40 px-3 py-3">
+              <div className="text-sm text-fg">Disturbance schedule</div>
+              <p className="text-xs leading-relaxed text-subtle">
+                Named w(t) applied identically for every study pack. Provisional knobs —
+                observational only. Does not change loop flags.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    { id: "none" as const, label: "None" },
+                    { id: "pulse" as const, label: "Pulse" },
+                    { id: "sustained" as const, label: "Sustained" },
+                  ] satisfies { id: DisturbanceScheduleId; label: string }[]
+                ).map((opt) => {
+                  const on = settings.disturbance.id === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() =>
+                        onSettings({
+                          disturbance: {
+                            ...settings.disturbance,
+                            id: opt.id,
+                            startGen:
+                              settings.disturbance.startGen || PROVISIONAL_SCHEDULE.startGen,
+                            duration:
+                              settings.disturbance.duration || PROVISIONAL_SCHEDULE.duration,
+                            amplitude:
+                              settings.disturbance.amplitude || PROVISIONAL_SCHEDULE.amplitude,
+                          },
+                        })
+                      }
+                      className={cn(
+                        "rounded-full px-3 py-1.5 text-sm transition-colors duration-150",
+                        on ? "bg-accent text-accent-fg" : "bg-raised text-muted hover:text-fg",
+                      )}
+                      aria-pressed={on}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {settings.disturbance.id !== "none" ? (
+                <>
+                  <Row
+                    label="Start generation"
+                    value={String(settings.disturbance.startGen)}
+                    hint="Provisional. Generation when the disturbance window opens."
+                  >
+                    <RangeInput
+                      min={0}
+                      max={500}
+                      step={1}
+                      value={settings.disturbance.startGen}
+                      label="Start generation"
+                      onChange={(v) =>
+                        onSettings({
+                          disturbance: { ...settings.disturbance, startGen: Math.round(v) },
+                        })
+                      }
+                    />
+                  </Row>
+                  <Row
+                    label="Duration"
+                    value={
+                      settings.disturbance.id === "sustained" && settings.disturbance.duration === 0
+                        ? "open"
+                        : String(settings.disturbance.duration)
+                    }
+                    hint={
+                      settings.disturbance.id === "pulse"
+                        ? "Provisional. Generations the pulse stays on."
+                        : "Provisional. Finite window; 0 = open-ended sustained."
+                    }
+                  >
+                    <RangeInput
+                      min={0}
+                      max={500}
+                      step={1}
+                      value={settings.disturbance.duration}
+                      label="Duration"
+                      onChange={(v) =>
+                        onSettings({
+                          disturbance: { ...settings.disturbance, duration: Math.round(v) },
+                        })
+                      }
+                    />
+                  </Row>
+                  <Row
+                    label="Amplitude"
+                    value={settings.disturbance.amplitude.toFixed(2)}
+                    hint="Provisional peak disturbance strength in [0, 1]."
+                  >
+                    <RangeInput
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      value={settings.disturbance.amplitude}
+                      label="Amplitude"
+                      onChange={(v) =>
+                        onSettings({
+                          disturbance: { ...settings.disturbance, amplitude: v },
+                        })
+                      }
+                    />
+                  </Row>
+                </>
+              ) : null}
+              <Row
+                label="Generation limit"
+                value={settings.generationLimit === 0 ? "off" : String(settings.generationLimit)}
+                hint="Provisional. 0 = unlimited. Run stops when generation reaches the limit."
+              >
+                <RangeInput
+                  min={0}
+                  max={2000}
+                  step={10}
+                  value={settings.generationLimit}
+                  label="Generation limit"
+                  onChange={(v) => onSettings({ generationLimit: Math.round(v) })}
+                />
+              </Row>
+              <Row
+                label="Measurement interval"
+                value={
+                  settings.measurementInterval === 0 ? "off" : `every ${settings.measurementInterval}`
+                }
+                hint="Provisional. Record a measurement tick every N generations (hook for later export)."
+              >
+                <RangeInput
+                  min={0}
+                  max={200}
+                  step={1}
+                  value={settings.measurementInterval}
+                  label="Measurement interval"
+                  onChange={(v) => onSettings({ measurementInterval: Math.round(v) })}
+                />
+              </Row>
+            </div>
             <div className="space-y-3">
               <ToggleRow
                 label="Heat overlay"

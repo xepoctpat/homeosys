@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { classicGenome } from "./genome.ts";
-import { SimEngine } from "./engine.ts";
+import { SimEngine, computeDisturbanceW } from "./engine.ts";
 import {
   DEFAULT_SETTINGS,
   STUDY_CONDITIONS,
+  type DisturbanceSchedule,
   type SimSettings,
 } from "./types.ts";
 
@@ -330,4 +331,153 @@ test("exit then re-entry increments recoveries and sets settlingTime", () => {
 
   engine.step();
   assert.equal(engine.snapshot().settlingTime, 1);
+});
+
+
+test("same seed+settings+schedule yield identical w(t) series", () => {
+  const disturbance: DisturbanceSchedule = {
+    id: "pulse",
+    startGen: 5,
+    duration: 10,
+    amplitude: 0.6,
+  };
+  const settings: SimSettings = {
+    ...packSettings("baseline"),
+    disturbance,
+    environment: false,
+  };
+  const seedKey = 0xdecafbad;
+  const steps = 40;
+
+  function run() {
+    const engine = new SimEngine();
+    engine.allocate(32, 24);
+    engine.applySettings(settings);
+    engine.seed("classic", seedKey);
+    const series: number[] = [];
+    for (let i = 0; i < steps; i++) {
+      engine.step();
+      series.push(engine.snapshot().w);
+    }
+    return series;
+  }
+
+  assert.deepEqual(run(), run());
+});
+
+test("pulse schedule is off before start, on during window, off after", () => {
+  const disturbance: DisturbanceSchedule = {
+    id: "pulse",
+    startGen: 10,
+    duration: 5,
+    amplitude: 0.7,
+  };
+  // Pure function check
+  for (let t = 0; t < 10; t++) assert.equal(computeDisturbanceW(t, disturbance), 0);
+  for (let t = 10; t < 15; t++) assert.equal(computeDisturbanceW(t, disturbance), 0.7);
+  for (let t = 15; t < 25; t++) assert.equal(computeDisturbanceW(t, disturbance), 0);
+
+  const engine = new SimEngine();
+  engine.allocate(24, 24);
+  engine.applySettings({
+    ...packSettings("baseline"),
+    disturbance,
+  });
+  engine.seed("classic", 99);
+  for (let t = 0; t < 25; t++) {
+    const before = engine.generation;
+    assert.equal(before, t);
+    engine.step();
+    const snap = engine.snapshot();
+    // w was computed for generation t before increment
+    if (t < 10 || t >= 15) assert.equal(snap.w, 0, `t=${t}`);
+    else assert.equal(snap.w, 0.7, `t=${t}`);
+  }
+});
+
+test("sustained schedule stays on after start (open-ended when duration 0)", () => {
+  const open: DisturbanceSchedule = {
+    id: "sustained",
+    startGen: 3,
+    duration: 0,
+    amplitude: 0.4,
+  };
+  assert.equal(computeDisturbanceW(2, open), 0);
+  assert.equal(computeDisturbanceW(3, open), 0.4);
+  assert.equal(computeDisturbanceW(300, open), 0.4);
+
+  const finite: DisturbanceSchedule = {
+    id: "sustained",
+    startGen: 2,
+    duration: 4,
+    amplitude: 0.5,
+  };
+  assert.equal(computeDisturbanceW(1, finite), 0);
+  assert.equal(computeDisturbanceW(2, finite), 0.5);
+  assert.equal(computeDisturbanceW(5, finite), 0.5);
+  assert.equal(computeDisturbanceW(6, finite), 0);
+});
+
+test("study pack apply does not change schedule id or params", () => {
+  const disturbance: DisturbanceSchedule = {
+    id: "pulse",
+    startGen: 12,
+    duration: 8,
+    amplitude: 0.33,
+  };
+  let settings: SimSettings = {
+    ...DEFAULT_SETTINGS,
+    disturbance,
+    generationLimit: 100,
+    measurementInterval: 5,
+  };
+  for (const pack of STUDY_CONDITIONS) {
+    settings = { ...settings, ...pack.settings };
+    assert.equal(settings.disturbance.id, "pulse");
+    assert.equal(settings.disturbance.startGen, 12);
+    assert.equal(settings.disturbance.duration, 8);
+    assert.equal(settings.disturbance.amplitude, 0.33);
+    assert.equal("disturbance" in pack.settings, false);
+    assert.equal("generationLimit" in pack.settings, false);
+    assert.equal("measurementInterval" in pack.settings, false);
+  }
+});
+
+test("generationLimit stops stepping and sets limitReached", () => {
+  const engine = new SimEngine();
+  engine.allocate(24, 24);
+  engine.applySettings({
+    ...packSettings("baseline"),
+    generationLimit: 5,
+  });
+  engine.seed("classic", 1);
+  for (let i = 0; i < 5; i++) {
+    assert.equal(engine.limitReached(), false);
+    engine.step();
+  }
+  assert.equal(engine.generation, 5);
+  assert.equal(engine.limitReached(), true);
+  assert.equal(engine.snapshot().limitReached, true);
+  engine.step(); // no-op
+  assert.equal(engine.generation, 5);
+});
+
+test("measurementInterval increments measureCount on expected generations", () => {
+  const engine = new SimEngine();
+  engine.allocate(24, 24);
+  engine.applySettings({
+    ...packSettings("baseline"),
+    measurementInterval: 5,
+  });
+  engine.seed("classic", 2);
+  assert.equal(engine.snapshot().measureCount, 0);
+
+  const hits: number[] = [];
+  for (let i = 0; i < 20; i++) {
+    engine.step();
+    const snap = engine.snapshot();
+    if (snap.shouldMeasure) hits.push(snap.generation);
+  }
+  assert.deepEqual(hits, [5, 10, 15, 20]);
+  assert.equal(engine.snapshot().measureCount, 4);
 });

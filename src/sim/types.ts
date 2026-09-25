@@ -45,6 +45,35 @@ export const PROVISIONAL_K: ViableRegion = {
   densityMax: 0.4,
 };
 
+/** Named disturbance schedule id — world/disturbance layer, never a loop flag. */
+export type DisturbanceScheduleId = "none" | "pulse" | "sustained";
+
+/**
+ * Provisional DisturbanceSchedule knobs — lab defaults, not calibrated.
+ * w(t) is computed from these params over generation t; study packs must not redefine them.
+ */
+export interface DisturbanceSchedule {
+  id: DisturbanceScheduleId;
+  /** Generation when the disturbance window opens. Provisional default. */
+  startGen: number;
+  /**
+   * Window length in generations.
+   * pulse: on-duration after startGen.
+   * sustained: finite length after startGen; 0 = open-ended from startGen.
+   */
+  duration: number;
+  /** Peak disturbance amplitude in [0, 1]. Provisional default. */
+  amplitude: number;
+}
+
+/** Conservative provisional schedule defaults for labs. */
+export const PROVISIONAL_SCHEDULE: DisturbanceSchedule = {
+  id: "none",
+  startGen: 50,
+  duration: 25,
+  amplitude: 0.55,
+};
+
 export interface Metrics {
   generation: number;
   population: number;
@@ -79,6 +108,22 @@ export interface Metrics {
   recoveries: number;
   /** Generations since last re-entry while still in K; null if outside or never re-entered. */
   settlingTime: number | null;
+  /** Active disturbance schedule id (replay note). */
+  scheduleId: DisturbanceScheduleId;
+  /** Current w(t) from the schedule at this generation. */
+  w: number;
+  scheduleStartGen: number;
+  scheduleDuration: number;
+  scheduleAmplitude: number;
+  /** 0 = unlimited. */
+  generationLimit: number;
+  /** Record every N generations; 0 = measurement hook disabled. */
+  measurementInterval: number;
+  measureCount: number;
+  /** True on generations where a measurement tick fired. */
+  shouldMeasure: boolean;
+  /** True when generationLimit > 0 and generation >= generationLimit. */
+  limitReached: boolean;
 }
 
 export interface SimSettings {
@@ -101,6 +146,15 @@ export interface SimSettings {
   densityMin: number;
   /** Provisional K density upper bound (not derived from setpoint). */
   densityMax: number;
+  /**
+   * Named disturbance schedule w(t). World/disturbance only — study packs must not set this.
+   * Additive dedicated channel; does not flip cybernetics/ultra/homeo loop flags.
+   */
+  disturbance: DisturbanceSchedule;
+  /** Stop stepping when generation >= limit; 0 = unlimited. Provisional default 0. */
+  generationLimit: number;
+  /** Measurement tick every N generations; 0 = disabled. Provisional default 10. */
+  measurementInterval: number;
 }
 
 export const LOOP_META: { id: LoopId; label: string }[] = [
@@ -131,6 +185,9 @@ export const DEFAULT_SETTINGS: SimSettings = {
   observerEnabled: true,
   densityMin: PROVISIONAL_K.densityMin,
   densityMax: PROVISIONAL_K.densityMax,
+  disturbance: { ...PROVISIONAL_SCHEDULE },
+  generationLimit: 0,
+  measurementInterval: 10,
 };
 
 export const PRESETS: {

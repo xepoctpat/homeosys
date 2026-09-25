@@ -324,6 +324,7 @@ export function FieldCanvas({
         const interval = 1 / Math.max(0.5, speedRef.current);
         let steps = 0;
         while (acc >= interval && steps < 10) {
+          if (engine.limitReached()) { acc = 0; break; }
           engine.step();
           acc -= interval;
           steps++;
