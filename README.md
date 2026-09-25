@@ -18,7 +18,7 @@ Homeostat asks:
 
 The first study sequence is **homeostasis → ultrastability → viability**:
 
-1. Establish deterministic Conway Life and environmental baselines.
+1. Establish deterministic B3/S23 cellular-automaton and environmental baselines.
 2. Measure whether feedback keeps essential variables within safe bounds.
 3. Test whether slower rule adaptation improves recovery under changing
    disturbances.

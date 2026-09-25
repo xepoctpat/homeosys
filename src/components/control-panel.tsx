@@ -270,7 +270,7 @@ export function ControlPanel(props: ControlPanelProps) {
   const activePreset = PRESETS.find((p) => p.id === preset);
 
   const modes: { id: PaintMode; label: string; icon: typeof Pencil }[] = [
-    { id: "life", label: "Life", icon: Pencil },
+    { id: "life", label: "Cell", icon: Pencil },
     { id: "erase", label: "Erase", icon: Eraser },
     { id: "regulator", label: "Regulator", icon: Zap },
     { id: "energy", label: "Energy", icon: Droplets },
