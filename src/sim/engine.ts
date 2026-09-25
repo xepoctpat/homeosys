@@ -7,6 +7,7 @@ import {
 import {
   DEFAULT_SETTINGS,
   LOOP_META,
+  PROVISIONAL_K,
   type Genome,
   type LoopFlag,
   type LoopId,
@@ -127,6 +128,15 @@ export class SimEngine {
   private lastViability = 0;
   private lastChanged = 0;
   private randState = 1;
+  /** Viable-region K aggregators — reset on seed. */
+  private stepsInK = 0;
+  private stepsObserved = 0;
+  private cumulativeDistanceOutsideK = 0;
+  private lastExitGeneration: number | null = null;
+  private lastEnterGeneration: number | null = null;
+  private recoveries = 0;
+  private prevInK: boolean | null = null;
+  private lastInK = false;
 
   allocate(cols: number, rows: number): void {
     this.cols = cols;
@@ -232,6 +242,7 @@ export class SimEngine {
     this.popHistory = [];
     this.viaHistory = [];
     this.pulses = [];
+    this.resetViableRegionAggregators();
     this.alive.fill(0);
     this.kind.fill(0);
     this.tenure.fill(0);
@@ -655,6 +666,7 @@ export class SimEngine {
       this.popHistory.shift();
       this.viaHistory.shift();
     }
+    this.observeViableRegion(density);
   }
 
   private runHomeostasis(err: number, density: number, gain: number): void {
@@ -770,6 +782,52 @@ export class SimEngine {
     }
   }
 
+  private resetViableRegionAggregators(): void {
+    this.stepsInK = 0;
+    this.stepsObserved = 0;
+    this.cumulativeDistanceOutsideK = 0;
+    this.lastExitGeneration = null;
+    this.lastEnterGeneration = null;
+    this.recoveries = 0;
+    this.prevInK = null;
+    this.lastInK = false;
+  }
+
+  private densityInK(density: number): boolean {
+    const { densityMin, densityMax } = this.settings;
+    return density >= densityMin && density <= densityMax;
+  }
+
+  private distanceOutsideK(density: number): number {
+    const { densityMin, densityMax } = this.settings;
+    if (density < densityMin) return densityMin - density;
+    if (density > densityMax) return density - densityMax;
+    return 0;
+  }
+
+  /** Record one generation against provisional K (density interval only). */
+  private observeViableRegion(density: number): void {
+    const inK = this.densityInK(density);
+    const dist = this.distanceOutsideK(density);
+    this.stepsObserved++;
+    if (inK) this.stepsInK++;
+    this.cumulativeDistanceOutsideK += dist;
+
+    if (this.prevInK !== null) {
+      if (this.prevInK && !inK) {
+        this.lastExitGeneration = this.generation;
+      } else if (!this.prevInK && inK) {
+        this.lastEnterGeneration = this.generation;
+        if (this.lastExitGeneration !== null && this.lastExitGeneration < this.generation) {
+          this.recoveries++;
+        }
+      }
+    }
+
+    this.prevInK = inK;
+    this.lastInK = inK;
+  }
+
   snapshot(): Metrics {
     const loops: LoopFlag[] = LOOP_META.map((m) => ({
       id: m.id,
@@ -777,11 +835,19 @@ export class SimEngine {
       active: this.lastLoops[m.id].active,
       note: this.lastLoops[m.id].note,
     }));
+    const density = this.cols ? this.lastPop / (this.cols * this.rows) : 0;
+    const densityMin = this.settings.densityMin ?? PROVISIONAL_K.densityMin;
+    const densityMax = this.settings.densityMax ?? PROVISIONAL_K.densityMax;
+    const inK = this.stepsObserved > 0 ? this.lastInK : this.densityInK(density);
+    const settlingTime =
+      inK && this.lastEnterGeneration !== null
+        ? this.generation - this.lastEnterGeneration
+        : null;
     return {
       generation: this.generation,
       population: this.lastPop,
       regulators: this.lastReg,
-      density: this.cols ? this.lastPop / (this.cols * this.rows) : 0,
+      density,
       entropy: this.lastEntropy,
       meanHeat: this.lastHeat,
       meanEnergy: this.lastEnergy,
@@ -794,6 +860,18 @@ export class SimEngine {
       loops,
       popHistory: this.popHistory.slice(),
       viaHistory: this.viaHistory.slice(),
+      z: { density, meanEnergy: this.lastEnergy },
+      densityMin,
+      densityMax,
+      inK,
+      timeInKFraction: this.stepsObserved > 0 ? this.stepsInK / this.stepsObserved : 0,
+      cumulativeDistanceOutsideK: this.cumulativeDistanceOutsideK,
+      stepsInK: this.stepsInK,
+      stepsObserved: this.stepsObserved,
+      lastExitGeneration: this.lastExitGeneration,
+      lastEnterGeneration: this.lastEnterGeneration,
+      recoveries: this.recoveries,
+      settlingTime,
     };
   }
 

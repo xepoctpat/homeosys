@@ -30,6 +30,21 @@ export interface LoopFlag {
   note: string;
 }
 
+/** Provisional viable region K for essential variable density.
+ * Explicit lab defaults — not calibrated and not derived from the homeostasis setpoint.
+ * meanEnergy floor is intentionally omitted to keep K a single clean density interval.
+ */
+export interface ViableRegion {
+  densityMin: number;
+  densityMax: number;
+}
+
+/** Conservative arbitrary density interval for labs. Labeled provisional everywhere it surfaces. */
+export const PROVISIONAL_K: ViableRegion = {
+  densityMin: 0.02,
+  densityMax: 0.4,
+};
+
 export interface Metrics {
   generation: number;
   population: number;
@@ -38,6 +53,7 @@ export interface Metrics {
   entropy: number;
   meanHeat: number;
   meanEnergy: number;
+  /** Legacy composite score; not renamed to imply membership in K. */
   viability: number;
   setpoint: number;
   rule: string;
@@ -47,6 +63,22 @@ export interface Metrics {
   loops: LoopFlag[];
   popHistory: number[];
   viaHistory: number[];
+  /** Essential variable z: density (required). meanEnergy is reported but not gated by K. */
+  z: { density: number; meanEnergy: number };
+  /** K bounds used this snapshot (provisional unless the operator overrides settings). */
+  densityMin: number;
+  densityMax: number;
+  inK: boolean;
+  timeInKFraction: number;
+  cumulativeDistanceOutsideK: number;
+  stepsInK: number;
+  stepsObserved: number;
+  lastExitGeneration: number | null;
+  lastEnterGeneration: number | null;
+  /** Exits followed by a later re-entry. */
+  recoveries: number;
+  /** Generations since last re-entry while still in K; null if outside or never re-entered. */
+  settlingTime: number | null;
 }
 
 export interface SimSettings {
@@ -65,6 +97,10 @@ export interface SimSettings {
   varietyEnabled: boolean;
   autoEnabled: boolean;
   observerEnabled: boolean;
+  /** Provisional K density lower bound (not derived from setpoint). */
+  densityMin: number;
+  /** Provisional K density upper bound (not derived from setpoint). */
+  densityMax: number;
 }
 
 export const LOOP_META: { id: LoopId; label: string }[] = [
@@ -93,6 +129,8 @@ export const DEFAULT_SETTINGS: SimSettings = {
   varietyEnabled: true,
   autoEnabled: true,
   observerEnabled: true,
+  densityMin: PROVISIONAL_K.densityMin,
+  densityMax: PROVISIONAL_K.densityMax,
 };
 
 export const PRESETS: {

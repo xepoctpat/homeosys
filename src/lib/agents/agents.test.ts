@@ -28,6 +28,18 @@ function metrics(overrides: Partial<Metrics> = {}): Metrics {
     loops: [],
     popHistory: [],
     viaHistory: [],
+    z: { density: 0.12, meanEnergy: 0.5 },
+    densityMin: 0.02,
+    densityMax: 0.4,
+    inK: true,
+    timeInKFraction: 1,
+    cumulativeDistanceOutsideK: 0,
+    stepsInK: 12,
+    stepsObserved: 12,
+    lastExitGeneration: null,
+    lastEnterGeneration: null,
+    recoveries: 0,
+    settlingTime: null,
     ...overrides,
   };
 }

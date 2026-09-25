@@ -17,10 +17,26 @@ export function MetricsBar({ metrics, running }: { metrics: Metrics | null; runn
       pop,
     })) ?? [];
 
-  const cells: { label: string; value: string; hideOnSmall?: boolean }[] = [
+  const cells: { label: string; value: string; hideOnSmall?: boolean; title?: string }[] = [
     { label: "Gen", value: metrics ? fmt(metrics.generation) : "—" },
     { label: "Pop", value: metrics ? fmt(metrics.population) : "—" },
     { label: "Density", value: metrics ? pct(metrics.density) : "—" },
+    { label: "In K", value: metrics ? (metrics.inK ? "yes" : "no") : "—" },
+    { label: "Time in K", value: metrics ? pct(metrics.timeInKFraction) : "—" },
+    {
+      label: "Outside Σ",
+      value: metrics ? metrics.cumulativeDistanceOutsideK.toFixed(3) : "—",
+      hideOnSmall: true,
+      title: "Cumulative density distance outside provisional K",
+    },
+    {
+      label: "K dens",
+      value: metrics
+        ? `${(metrics.densityMin * 100).toFixed(0)}–${(metrics.densityMax * 100).toFixed(0)}% provisional`
+        : "—",
+      hideOnSmall: true,
+      title: "Provisional K density interval (not calibrated)",
+    },
     { label: "Viability", value: metrics ? metrics.viability.toFixed(2) : "—" },
     { label: "Setpoint", value: metrics ? pct(metrics.setpoint) : "—", hideOnSmall: true },
     { label: "Rule", value: metrics ? metrics.rule : "—" },
@@ -31,7 +47,11 @@ export function MetricsBar({ metrics, running }: { metrics: Metrics | null; runn
     <div className="flex items-center gap-3 border-t border-border bg-surface px-3 py-2 sm:px-4">
       <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-4 overflow-x-auto">
         {cells.map((c) => (
-          <div key={c.label} className={cn("shrink-0", c.hideOnSmall && "hidden sm:block")}>
+          <div
+            key={c.label}
+            className={cn("shrink-0", c.hideOnSmall && "hidden sm:block")}
+            title={c.title}
+          >
             <div className="text-xs tracking-wide text-subtle">{c.label}</div>
             <div className="font-mono text-sm tabular-nums text-fg">{c.value}</div>
           </div>

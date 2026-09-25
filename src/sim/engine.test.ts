@@ -132,3 +132,202 @@ test("study condition packs match the three-condition table", () => {
   assert.equal(byId.ultrastable.settings.cybernetics, true);
   assert.equal(byId.ultrastable.settings.ultraEnabled, true);
 });
+
+function forceDensity(engine: SimEngine, density: number): void {
+  engine.alive.fill(0);
+  engine.kind.fill(0);
+  engine.tenure.fill(0);
+  const n = engine.cols * engine.rows;
+  const target = Math.max(0, Math.min(n, Math.round(density * n)));
+  for (let i = 0; i < target; i++) engine.alive[i] = 1;
+}
+
+test("density inside provisional K marks inK and zero outside distance", () => {
+  const engine = new SimEngine();
+  engine.allocate(50, 40);
+  // Wide provisional interval so any post-step density stays inside.
+  engine.applySettings({
+    ...packSettings("baseline"),
+    densityMin: 0,
+    densityMax: 1,
+  });
+  engine.seed("classic", 42);
+  engine.step();
+  const snap = engine.snapshot();
+  assert.equal(snap.inK, true);
+  assert.equal(snap.cumulativeDistanceOutsideK, 0);
+  assert.equal(snap.densityMin, 0);
+  assert.equal(snap.densityMax, 1);
+  assert.equal(snap.z.density, snap.density);
+  assert.equal(snap.z.meanEnergy, snap.meanEnergy);
+});
+
+test("density outside K marks inK false and accumulates distance", () => {
+  const engine = new SimEngine();
+  engine.allocate(50, 40);
+  engine.applySettings({
+    ...packSettings("baseline"),
+    densityMin: 0.02,
+    densityMax: 0.4,
+  });
+  engine.seed("classic", 7);
+  // Empty field stays empty under baseline B3/S23 → density 0, below K.
+  forceDensity(engine, 0);
+  engine.step();
+  const afterOne = engine.snapshot();
+  assert.equal(afterOne.density, 0);
+  assert.equal(afterOne.inK, false);
+  assert.equal(afterOne.cumulativeDistanceOutsideK, 0.02);
+
+  forceDensity(engine, 0);
+  engine.step();
+  const afterTwo = engine.snapshot();
+  assert.equal(afterTwo.inK, false);
+  assert.equal(afterTwo.cumulativeDistanceOutsideK, 0.04);
+});
+
+test("timeInKFraction matches counted steps after N generations", () => {
+  const engine = new SimEngine();
+  engine.allocate(40, 30);
+  engine.applySettings({
+    ...packSettings("baseline"),
+    densityMin: 0,
+    densityMax: 1,
+  });
+  engine.seed("classic", 99);
+
+  const insideSteps = 10;
+  const outsideSteps = 10;
+  for (let i = 0; i < insideSteps; i++) engine.step();
+
+  engine.applySettings({ densityMin: 0.9, densityMax: 1 });
+  for (let i = 0; i < outsideSteps; i++) {
+    forceDensity(engine, 0);
+    engine.step();
+  }
+
+  const snap = engine.snapshot();
+  const N = insideSteps + outsideSteps;
+  assert.equal(snap.stepsObserved, N);
+  assert.equal(snap.stepsInK, insideSteps);
+  assert.equal(snap.timeInKFraction, insideSteps / N);
+});
+
+test("reseed resets viable-region aggregators", () => {
+  const engine = new SimEngine();
+  engine.allocate(40, 30);
+  engine.applySettings({
+    ...packSettings("baseline"),
+    densityMin: 0.02,
+    densityMax: 0.4,
+  });
+  engine.seed("classic", 11);
+  for (let i = 0; i < 8; i++) {
+    forceDensity(engine, 0);
+    engine.step();
+  }
+  const before = engine.snapshot();
+  assert.ok(before.stepsObserved > 0);
+  assert.ok(before.cumulativeDistanceOutsideK > 0);
+
+  engine.seed("classic", 11);
+  const after = engine.snapshot();
+  assert.equal(after.stepsObserved, 0);
+  assert.equal(after.stepsInK, 0);
+  assert.equal(after.cumulativeDistanceOutsideK, 0);
+  assert.equal(after.timeInKFraction, 0);
+  assert.equal(after.recoveries, 0);
+  assert.equal(after.lastExitGeneration, null);
+  assert.equal(after.lastEnterGeneration, null);
+  assert.equal(after.settlingTime, null);
+});
+
+test("same seedKey and settings yield identical inK series and aggregators", () => {
+  const settings: SimSettings = {
+    ...packSettings("baseline"),
+    densityMin: 0.02,
+    densityMax: 0.4,
+  };
+  const seedKey = 0xc0ffee;
+  const steps = 30;
+
+  function run() {
+    const engine = new SimEngine();
+    engine.allocate(48, 36);
+    engine.applySettings(settings);
+    engine.seed("classic", seedKey);
+    const series: boolean[] = [];
+    for (let i = 0; i < steps; i++) {
+      engine.step();
+      series.push(engine.snapshot().inK);
+    }
+    const snap = engine.snapshot();
+    return {
+      series,
+      stepsInK: snap.stepsInK,
+      stepsObserved: snap.stepsObserved,
+      timeInKFraction: snap.timeInKFraction,
+      cumulativeDistanceOutsideK: snap.cumulativeDistanceOutsideK,
+      recoveries: snap.recoveries,
+      lastExitGeneration: snap.lastExitGeneration,
+      lastEnterGeneration: snap.lastEnterGeneration,
+    };
+  }
+
+  const a = run();
+  const b = run();
+  assert.deepEqual(a.series, b.series);
+  assert.equal(a.stepsInK, b.stepsInK);
+  assert.equal(a.stepsObserved, b.stepsObserved);
+  assert.equal(a.timeInKFraction, b.timeInKFraction);
+  assert.equal(a.cumulativeDistanceOutsideK, b.cumulativeDistanceOutsideK);
+  assert.equal(a.recoveries, b.recoveries);
+  assert.equal(a.lastExitGeneration, b.lastExitGeneration);
+  assert.equal(a.lastEnterGeneration, b.lastEnterGeneration);
+});
+
+test("PROVISIONAL_K defaults are explicit and not tied to setpoint", () => {
+  assert.equal(DEFAULT_SETTINGS.densityMin, 0.02);
+  assert.equal(DEFAULT_SETTINGS.densityMax, 0.4);
+  assert.notEqual(DEFAULT_SETTINGS.densityMin, DEFAULT_SETTINGS.setpoint);
+  assert.notEqual(DEFAULT_SETTINGS.densityMax, DEFAULT_SETTINGS.setpoint);
+  // Study packs must not redefine K — they remain loop/env packs only.
+  for (const pack of STUDY_CONDITIONS) {
+    assert.equal("densityMin" in pack.settings, false);
+    assert.equal("densityMax" in pack.settings, false);
+  }
+});
+
+test("exit then re-entry increments recoveries and sets settlingTime", () => {
+  const engine = new SimEngine();
+  engine.allocate(40, 30);
+  engine.applySettings({
+    ...packSettings("baseline"),
+    densityMin: 0,
+    densityMax: 1,
+  });
+  engine.seed("classic", 3);
+  // Start inside K.
+  engine.step();
+  assert.equal(engine.snapshot().inK, true);
+
+  // Leave K.
+  engine.applySettings({ densityMin: 0.9, densityMax: 1 });
+  forceDensity(engine, 0);
+  engine.step();
+  const exited = engine.snapshot();
+  assert.equal(exited.inK, false);
+  assert.equal(exited.lastExitGeneration, exited.generation);
+
+  // Re-enter K.
+  engine.applySettings({ densityMin: 0, densityMax: 1 });
+  engine.step();
+  const entered = engine.snapshot();
+  assert.equal(entered.inK, true);
+  assert.equal(entered.recoveries, 1);
+  assert.equal(entered.lastEnterGeneration, entered.generation);
+  assert.equal(entered.settlingTime, 0);
+
+  engine.step();
+  assert.equal(engine.snapshot().settlingTime, 1);
+});
