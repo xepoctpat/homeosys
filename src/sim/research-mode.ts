@@ -13,6 +13,7 @@ import {
   type PresetId,
   type SimSettings,
   type StudyConditionId,
+  type UltraEpisodeOutcome,
 } from "./types.ts";
 
 /** Default batch repeat count. */
@@ -91,6 +92,11 @@ export interface ResearchRunSummary {
   ultraProbeCount: number;
   ultraKeptCount: number;
   ultraRevertedCount: number;
+  lastUltraOutcome: UltraEpisodeOutcome | null;
+  lastUltraGeneration: number | null;
+  stableEpisodeLength: number;
+  lastUltraMinPop: number | null;
+  lastUltraDeltaPop: number | null;
   rule: string;
   w: number;
   /** Optional measurement-tick time series when interval > 0. */
@@ -269,6 +275,11 @@ export function summarizeRun(
     ultraProbeCount: metrics.ultraProbeCount,
     ultraKeptCount: metrics.ultraKeptCount,
     ultraRevertedCount: metrics.ultraRevertedCount,
+    lastUltraOutcome: metrics.lastUltraOutcome,
+    lastUltraGeneration: metrics.lastUltraGeneration,
+    stableEpisodeLength: metrics.stableEpisodeLength,
+    lastUltraMinPop: metrics.lastUltraMinPop,
+    lastUltraDeltaPop: metrics.lastUltraDeltaPop,
     rule: metrics.rule,
     w: metrics.w,
     ...(series && series.length > 0 ? { series } : {}),
@@ -391,6 +402,11 @@ export const RESEARCH_CSV_COLUMNS: (keyof ResearchRunSummary)[] = [
   "ultraProbeCount",
   "ultraKeptCount",
   "ultraRevertedCount",
+  "lastUltraOutcome",
+  "lastUltraGeneration",
+  "stableEpisodeLength",
+  "lastUltraMinPop",
+  "lastUltraDeltaPop",
   "rule",
   "w",
 ];

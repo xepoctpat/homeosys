@@ -1,0 +1,375 @@
+/**
+ * Observational evidence ladder arms (M2–M5).
+ *
+ * Uses ResearchMode helpers only. Eng scaffolding ≠ scientific closure.
+ * Provisional K unchanged. No life / autopoiesis claims.
+ */
+import {
+  AB_CONTROLLER_GENERATION_LIMIT,
+  AB_CONTROLLER_SCHEDULE,
+  ABC_ORGANIZATION_GENERATION_LIMIT,
+  ABC_ORGANIZATION_SCHEDULE,
+  abControllerProtocols,
+  abcOrganizationProtocols,
+  exportCsv,
+  exportJsonl,
+  runOne,
+  validateProtocol,
+  type EngineFactory,
+  type ResearchProtocol,
+  type ResearchRunSummary,
+} from "./research-mode.ts";
+import type { DisturbanceSchedule, PresetId, StudyConditionId } from "./types.ts";
+
+/** Default N for published evidence arms. */
+export const EVIDENCE_DEFAULT_N = 10;
+
+/**
+ * Deterministic seed strategy: fixed seedKey list (length = EVIDENCE_DEFAULT_N).
+ * Each arm run i uses EVIDENCE_SEED_KEYS[i]. Re-runs with the same list are bit-identical
+ * given the same protocol knobs. Do not derive from Date/Math.random.
+ */
+export const EVIDENCE_SEED_KEYS: readonly number[] = [
+  0x0a01_0001, 0x0a01_0002, 0x0a01_0003, 0x0a01_0004, 0x0a01_0005, 0x0a01_0006, 0x0a01_0007,
+  0x0a01_0008, 0x0a01_0009, 0x0a01_000a,
+];
+
+/** Shared world geometry / preset across M2–M5 arms (study packs own loop flags). */
+export const EVIDENCE_COLS = 48;
+export const EVIDENCE_ROWS = 36;
+export const EVIDENCE_WORLD_PRESET: PresetId = "homeostat";
+/** Series off by default for compact JSONL artifacts; CLI may enable. */
+export const EVIDENCE_MEASUREMENT_INTERVAL = 0;
+
+/** M2 / shared pulse family (aligned with M4/M5 A/B schedules). */
+export const M2_SCHEDULE: DisturbanceSchedule = {
+  id: "pulse",
+  startGen: 40,
+  duration: 30,
+  amplitude: 0.55,
+};
+export const M2_GENERATION_LIMIT = 200;
+
+/**
+ * M3 nonstationary family: sustained disturbance over a long window
+ * (pulse-train substitute within existing schedule ids: none|pulse|sustained).
+ */
+export const M3_SCHEDULE: DisturbanceSchedule = {
+  id: "sustained",
+  startGen: 30,
+  duration: 120,
+  amplitude: 0.55,
+};
+export const M3_GENERATION_LIMIT = 200;
+
+export type EvidenceMilestone = "m2" | "m3" | "m4" | "m5";
+
+export type EvidenceArmId =
+  | "m2-baseline"
+  | "m2-homeostatic"
+  | "m3-homeostatic"
+  | "m3-ultrastable"
+  | "m4-setpoint"
+  | "m4-viability"
+  | "m5-central"
+  | "m5-local"
+  | "m5-coordinated";
+
+export interface EvidenceArm {
+  id: EvidenceArmId;
+  milestone: EvidenceMilestone;
+  label: string;
+  /** Factor under observation (studyCondition / controller / organization). */
+  factor: string;
+  protocolTemplate: Omit<ResearchProtocol, "seedKey" | "repeats">;
+}
+
+export interface EvidenceArmResult {
+  arm: EvidenceArm;
+  seedKeys: number[];
+  results: ResearchRunSummary[];
+}
+
+function baseWorld(over: {
+  studyCondition: StudyConditionId;
+  schedule: DisturbanceSchedule;
+  generationLimit: number;
+  controllerMode?: ResearchProtocol["controllerMode"];
+  organizationMode?: ResearchProtocol["organizationMode"];
+}): Omit<ResearchProtocol, "seedKey" | "repeats"> {
+  const validated = validateProtocol({
+    seedKey: EVIDENCE_SEED_KEYS[0],
+    studyCondition: over.studyCondition,
+    schedule: over.schedule,
+    generationLimit: over.generationLimit,
+    measurementInterval: EVIDENCE_MEASUREMENT_INTERVAL,
+    cols: EVIDENCE_COLS,
+    rows: EVIDENCE_ROWS,
+    worldPreset: EVIDENCE_WORLD_PRESET,
+    repeats: 1,
+    controllerMode: over.controllerMode ?? "SetpointError",
+    organizationMode: over.organizationMode ?? "Central",
+  });
+  if (!validated.ok) throw new Error(validated.error);
+  const { seedKey: _s, repeats: _r, ...rest } = validated.protocol;
+  return rest;
+}
+
+/** Named observational arms for the evidence ladder (M2–M5). */
+export function buildEvidenceArms(): EvidenceArm[] {
+  const m2Shared = {
+    schedule: { ...M2_SCHEDULE },
+    generationLimit: M2_GENERATION_LIMIT,
+    controllerMode: "SetpointError" as const,
+    organizationMode: "Central" as const,
+  };
+
+  const m2Baseline = baseWorld({ studyCondition: "baseline", ...m2Shared });
+  const m2Homeo = baseWorld({ studyCondition: "homeostatic", ...m2Shared });
+
+  const m3Shared = {
+    schedule: { ...M3_SCHEDULE },
+    generationLimit: M3_GENERATION_LIMIT,
+    controllerMode: "SetpointError" as const,
+    organizationMode: "Central" as const,
+  };
+  const m3Homeo = baseWorld({ studyCondition: "homeostatic", ...m3Shared });
+  const m3Ultra = baseWorld({ studyCondition: "ultrastable", ...m3Shared });
+
+  const m4Base = {
+    ...baseWorld({
+      studyCondition: "homeostatic",
+      schedule: { ...AB_CONTROLLER_SCHEDULE },
+      generationLimit: AB_CONTROLLER_GENERATION_LIMIT,
+      controllerMode: "SetpointError",
+      organizationMode: "Central",
+    }),
+    seedKey: EVIDENCE_SEED_KEYS[0],
+    repeats: 1,
+  };
+  const { setpoint, viability } = abControllerProtocols(m4Base);
+
+  const m5Base = {
+    ...baseWorld({
+      studyCondition: "homeostatic",
+      schedule: { ...ABC_ORGANIZATION_SCHEDULE },
+      generationLimit: ABC_ORGANIZATION_GENERATION_LIMIT,
+      controllerMode: "SetpointError",
+      organizationMode: "Central",
+    }),
+    seedKey: EVIDENCE_SEED_KEYS[0],
+    repeats: 1,
+  };
+  const { central, local, coordinated } = abcOrganizationProtocols(m5Base);
+
+  const strip = (p: ResearchProtocol): Omit<ResearchProtocol, "seedKey" | "repeats"> => {
+    const { seedKey: _s, repeats: _r, ...rest } = p;
+    return rest;
+  };
+
+  return [
+    {
+      id: "m2-baseline",
+      milestone: "m2",
+      label: "M2 baseline (no feedback)",
+      factor: "studyCondition=baseline",
+      protocolTemplate: m2Baseline,
+    },
+    {
+      id: "m2-homeostatic",
+      milestone: "m2",
+      label: "M2 homeostatic (feedback, ultra off)",
+      factor: "studyCondition=homeostatic",
+      protocolTemplate: m2Homeo,
+    },
+    {
+      id: "m3-homeostatic",
+      milestone: "m3",
+      label: "M3 homeostatic under sustained disturbance",
+      factor: "studyCondition=homeostatic",
+      protocolTemplate: m3Homeo,
+    },
+    {
+      id: "m3-ultrastable",
+      milestone: "m3",
+      label: "M3 ultrastable under sustained disturbance",
+      factor: "studyCondition=ultrastable",
+      protocolTemplate: m3Ultra,
+    },
+    {
+      id: "m4-setpoint",
+      milestone: "m4",
+      label: "M4 SetpointError controller",
+      factor: "controllerMode=SetpointError",
+      protocolTemplate: strip(setpoint),
+    },
+    {
+      id: "m4-viability",
+      milestone: "m4",
+      label: "M4 ViabilityBand controller",
+      factor: "controllerMode=ViabilityBand",
+      protocolTemplate: strip(viability),
+    },
+    {
+      id: "m5-central",
+      milestone: "m5",
+      label: "M5 Central organization",
+      factor: "organizationMode=Central",
+      protocolTemplate: strip(central),
+    },
+    {
+      id: "m5-local",
+      milestone: "m5",
+      label: "M5 Local organization",
+      factor: "organizationMode=Local",
+      protocolTemplate: strip(local),
+    },
+    {
+      id: "m5-coordinated",
+      milestone: "m5",
+      label: "M5 Coordinated organization",
+      factor: "organizationMode=Coordinated",
+      protocolTemplate: strip(coordinated),
+    },
+  ];
+}
+
+export function resolveSeedKeys(n: number): number[] {
+  if (!Number.isFinite(n) || n < 1) {
+    throw new Error(`n must be >= 1, got ${n}`);
+  }
+  if (n > EVIDENCE_SEED_KEYS.length) {
+    throw new Error(
+      `N=${n} exceeds fixed EVIDENCE_SEED_KEYS length (${EVIDENCE_SEED_KEYS.length}). Extend the list explicitly.`,
+    );
+  }
+  return EVIDENCE_SEED_KEYS.slice(0, Math.round(n)).map((k) => k >>> 0);
+}
+
+/**
+ * Run one named arm across a deterministic seed list (N ≤ EVIDENCE_SEED_KEYS.length).
+ * Does not claim life/autopoiesis; observational summaries only.
+ */
+export function runEvidenceArm(
+  arm: EvidenceArm,
+  options: {
+    n?: number;
+    collectSeries?: boolean;
+    engineFactory?: EngineFactory;
+  } = {},
+): EvidenceArmResult {
+  const n = options.n ?? EVIDENCE_DEFAULT_N;
+  const seedKeys = resolveSeedKeys(n);
+  const results: ResearchRunSummary[] = [];
+  for (let i = 0; i < seedKeys.length; i++) {
+    const protocol: ResearchProtocol = {
+      ...arm.protocolTemplate,
+      seedKey: seedKeys[i],
+      repeats: 1,
+    };
+    results.push(
+      runOne(protocol, i, options.engineFactory, {
+        collectSeries: options.collectSeries ?? false,
+      }),
+    );
+  }
+  return { arm, seedKeys, results };
+}
+
+export function runEvidenceMatrix(
+  options: {
+    milestones?: EvidenceMilestone[];
+    n?: number;
+    collectSeries?: boolean;
+    engineFactory?: EngineFactory;
+    onArm?: (done: EvidenceArmResult, index: number, total: number) => void;
+  } = {},
+): EvidenceArmResult[] {
+  const milestones = options.milestones ?? (["m2", "m3", "m4", "m5"] as EvidenceMilestone[]);
+  const arms = buildEvidenceArms().filter((a) => milestones.includes(a.milestone));
+  const out: EvidenceArmResult[] = [];
+  for (let i = 0; i < arms.length; i++) {
+    const row = runEvidenceArm(arms[i], options);
+    out.push(row);
+    options.onArm?.(row, i, arms.length);
+  }
+  return out;
+}
+
+export interface EvidenceProtocolMeta {
+  milestone: EvidenceMilestone;
+  armId: EvidenceArmId;
+  label: string;
+  factor: string;
+  seedStrategy: "fixed-seedKey-list";
+  seedKeys: number[];
+  n: number;
+  protocol: Omit<ResearchProtocol, "seedKey" | "repeats">;
+  notes: string[];
+}
+
+export function armProtocolMeta(armResult: EvidenceArmResult): EvidenceProtocolMeta {
+  return {
+    milestone: armResult.arm.milestone,
+    armId: armResult.arm.id,
+    label: armResult.arm.label,
+    factor: armResult.arm.factor,
+    seedStrategy: "fixed-seedKey-list",
+    seedKeys: [...armResult.seedKeys],
+    n: armResult.seedKeys.length,
+    protocol: armResult.arm.protocolTemplate,
+    notes: [
+      "Observational only — eng scaffolding ≠ scientific closure.",
+      "Provisional K unchanged (densityMin/Max from DEFAULT_SETTINGS / PROVISIONAL_K).",
+      "No life / autopoiesis / cognition claims.",
+      "UltraEpisodeLog aggregates appear on each run summary when present.",
+    ],
+  };
+}
+
+/** JSONL with a leading `#` metadata header line (JSON object) then one summary per line. */
+export function exportArmJsonl(armResult: EvidenceArmResult): string {
+  const meta = armProtocolMeta(armResult);
+  const header = `# ${JSON.stringify(meta)}`;
+  return `${header}\n${exportJsonl(armResult.results)}`;
+}
+
+export function exportArmCsv(armResult: EvidenceArmResult): string {
+  return exportCsv(armResult.results);
+}
+
+export function validateEvidenceMatrix(): { ok: true; arms: EvidenceArm[] } | { ok: false; error: string } {
+  try {
+    const arms = buildEvidenceArms();
+    if (arms.length < 9) return { ok: false, error: `expected ≥9 arms, got ${arms.length}` };
+    const ids = new Set(arms.map((a) => a.id));
+    if (ids.size !== arms.length) return { ok: false, error: "duplicate arm ids" };
+    for (const a of arms) {
+      const v = validateProtocol({
+        ...a.protocolTemplate,
+        seedKey: EVIDENCE_SEED_KEYS[0],
+        repeats: 1,
+      });
+      if (!v.ok) return { ok: false, error: `${a.id}: ${v.error}` };
+    }
+    // Pairing invariants
+    const m2 = arms.filter((a) => a.milestone === "m2");
+    if (m2.length !== 2) return { ok: false, error: "M2 must have 2 arms" };
+    if (m2[0].protocolTemplate.schedule.id !== m2[1].protocolTemplate.schedule.id) {
+      return { ok: false, error: "M2 arms must share schedule" };
+    }
+    if (m2[0].protocolTemplate.generationLimit !== m2[1].protocolTemplate.generationLimit) {
+      return { ok: false, error: "M2 arms must share generationLimit" };
+    }
+    const m4 = arms.filter((a) => a.milestone === "m4");
+    if (m4[0].protocolTemplate.controllerMode === m4[1].protocolTemplate.controllerMode) {
+      return { ok: false, error: "M4 arms must differ in controllerMode" };
+    }
+    const m5 = arms.filter((a) => a.milestone === "m5");
+    const org = new Set(m5.map((a) => a.protocolTemplate.organizationMode));
+    if (org.size !== 3) return { ok: false, error: "M5 must cover Central|Local|Coordinated" };
+    return { ok: true, arms };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
