@@ -21,6 +21,16 @@ import {
   type SimSettings,
   type StudyConditionId,
 } from "@/sim/types";
+import {
+  RESEARCH_DEFAULT_REPEATS,
+  clampRepeats,
+  captureProtocol,
+  downloadResearchExport,
+  runBatchAsync,
+  settingsFromProtocol,
+  type ResearchProtocol,
+  type ResearchRunSummary,
+} from "@/sim/research-mode";
 
 const STORAGE_KEY = "homeostat.v1";
 interface Persisted {
@@ -76,6 +86,16 @@ export function AppShell() {
   const [preset, setPreset] = useState<PresetId>("homeostat");
   const [seedLocked, setSeedLocked] = useState(false);
   const [studyCondition, setStudyCondition] = useState<StudyConditionId | null>(null);
+  const [researchArmed, setResearchArmed] = useState(false);
+  const [researchProtocol, setResearchProtocol] = useState<ResearchProtocol | null>(null);
+  const [researchRepeats, setResearchRepeats] = useState(RESEARCH_DEFAULT_REPEATS);
+  const [researchBatchRunning, setResearchBatchRunning] = useState(false);
+  const [researchBatchProgress, setResearchBatchProgress] = useState<{
+    completed: number;
+    total: number;
+  } | null>(null);
+  const [researchResults, setResearchResults] = useState<ResearchRunSummary[]>([]);
+  const [researchHint, setResearchHint] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [layoutNonce, setLayoutNonce] = useState(0);
   const [hydrated, setHydrated] = useState(false);
@@ -179,6 +199,10 @@ export function AppShell() {
 
   const onSettings = useCallback(
     (partial: Partial<SimSettings>) => {
+      if (researchArmed) {
+        setResearchHint("Protocol locked — Unlock on the Research tab to edit World/Loops settings.");
+        return;
+      }
       recordAction("change-setting", Object.keys(partial).join(", "));
       setStudyCondition(null);
       const next = normalizeSimSettings({ ...settingsRef.current, ...partial });
@@ -191,7 +215,7 @@ export function AppShell() {
         onMetrics();
       }
     },
-    [engine, onMetrics, recordAction, running],
+    [engine, onMetrics, recordAction, researchArmed, running],
   );
 
   const onUnlock = useCallback(() => {
@@ -218,6 +242,10 @@ export function AppShell() {
 
   const applyPreset = useCallback(
     (id: PresetId) => {
+      if (researchArmed) {
+        setResearchHint("Protocol locked — Unlock on the Research tab to change world preset.");
+        return;
+      }
       const next = normalizeSimSettings(worldSettingsForPreset(settingsRef.current, id));
       settingsRef.current = next;
       setPreset(id);
@@ -229,7 +257,7 @@ export function AppShell() {
       engine.seed(id, key);
       onMetrics();
     },
-    [engine, onMetrics, recordAction, seedLocked],
+    [engine, onMetrics, recordAction, researchArmed, seedLocked],
   );
 
   const reseed = useCallback(() => {
@@ -241,6 +269,10 @@ export function AppShell() {
 
   const applyStudyCondition = useCallback(
     (id: StudyConditionId) => {
+      if (researchArmed) {
+        setResearchHint("Protocol locked — Unlock on the Research tab to change study condition.");
+        return;
+      }
       const found = STUDY_CONDITIONS.find((item) => item.id === id);
       if (!found) return;
       const next = normalizeSimSettings({ ...settingsRef.current, ...found.settings });
@@ -253,7 +285,109 @@ export function AppShell() {
       engine.seed(preset, engine.seedKey);
       onMetrics();
     },
-    [engine, onMetrics, preset, recordAction],
+    [engine, onMetrics, preset, recordAction, researchArmed],
+  );
+
+  const onResearchRepeats = useCallback((n: number) => {
+    setResearchRepeats(clampRepeats(n));
+  }, []);
+
+  const onLockResearchProtocol = useCallback(() => {
+    const cols = Math.max(1, engine.cols || 64);
+    const rows = Math.max(1, engine.rows || 48);
+    const captured = captureProtocol({
+      seedKey: engine.seedKey,
+      studyCondition,
+      settings: settingsRef.current,
+      cols,
+      rows,
+      worldPreset: preset,
+      repeats: researchRepeats,
+    });
+    if (!captured.ok) {
+      setResearchHint(captured.error);
+      return;
+    }
+    const protocol = { ...captured.protocol, repeats: clampRepeats(researchRepeats) };
+    const next = settingsFromProtocol(protocol);
+    settingsRef.current = next;
+    setSettings(next);
+    engine.applySettings(next);
+    engine.seed(protocol.worldPreset, protocol.seedKey);
+    setSeedLocked(true);
+    setStudyCondition(protocol.studyCondition);
+    setResearchProtocol(protocol);
+    setResearchArmed(true);
+    setResearchResults([]);
+    setResearchBatchProgress(null);
+    setResearchHint(
+      "Protocol locked. Run batch uses this seed, condition, schedule, and generation limit.",
+    );
+    recordAction("change-setting", "research:lock");
+    onMetrics();
+  }, [engine, onMetrics, preset, recordAction, researchRepeats, studyCondition]);
+
+  const onUnlockResearchProtocol = useCallback(() => {
+    setResearchArmed(false);
+    setResearchProtocol(null);
+    setResearchBatchProgress(null);
+    setResearchBatchRunning(false);
+    setResearchHint("Unlocked — exploratory editing restored on Run / World / Loops.");
+    recordAction("change-setting", "research:unlock");
+  }, [recordAction]);
+
+  const onRunResearchBatch = useCallback(async () => {
+    if (!researchProtocol) {
+      setResearchHint("Lock a protocol before Run batch.");
+      return;
+    }
+    if (researchProtocol.generationLimit <= 0) {
+      setResearchHint(
+        "generationLimit must be > 0 for a research batch. Set it in World before locking.",
+      );
+      return;
+    }
+    const protocol: ResearchProtocol = {
+      ...researchProtocol,
+      repeats: clampRepeats(researchRepeats),
+    };
+    setResearchProtocol(protocol);
+    setResearchBatchRunning(true);
+    setResearchBatchProgress({ completed: 0, total: protocol.repeats });
+    setResearchHint(null);
+    setRunning(false);
+    recordAction("change-setting", `research:batch:${protocol.repeats}`);
+    try {
+      const rows = await runBatchAsync(protocol, (progress) => {
+        setResearchBatchProgress({ completed: progress.completed, total: progress.total });
+      });
+      setResearchResults(rows);
+      setResearchHint(`Batch complete — ${rows.length} run summaries ready to export.`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setResearchHint(message);
+      setResearchResults([]);
+    } finally {
+      setResearchBatchRunning(false);
+    }
+  }, [recordAction, researchProtocol, researchRepeats]);
+
+  const onExportResearch = useCallback(
+    (format: "jsonl" | "csv") => {
+      if (!researchProtocol || researchResults.length === 0) {
+        setResearchHint("Run a batch before exporting.");
+        return;
+      }
+      try {
+        const name = downloadResearchExport(researchProtocol, researchResults, format);
+        setResearchHint(`Downloaded ${name} to your browser download folder.`);
+        recordAction("change-setting", `research:export:${format}`);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        setResearchHint(message);
+      }
+    },
+    [recordAction, researchProtocol, researchResults],
   );
 
   const clear = useCallback(() => {
@@ -390,6 +524,20 @@ export function AppShell() {
             studyCondition={studyCondition}
             onStudyCondition={applyStudyCondition}
             metrics={metrics}
+            researchArmed={researchArmed}
+            researchProtocol={researchProtocol}
+            researchRepeats={researchRepeats}
+            onResearchRepeats={onResearchRepeats}
+            onLockResearchProtocol={onLockResearchProtocol}
+            onUnlockResearchProtocol={onUnlockResearchProtocol}
+            onRunResearchBatch={() => {
+              void onRunResearchBatch();
+            }}
+            researchBatchRunning={researchBatchRunning}
+            researchBatchProgress={researchBatchProgress}
+            researchResults={researchResults}
+            onExportResearch={onExportResearch}
+            researchHint={researchHint}
           />
         </aside>
       </div>

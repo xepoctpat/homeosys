@@ -2,12 +2,14 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import {
   Droplets,
   Eraser,
+  Lock,
   Pause,
   Pencil,
   Play,
   Redo,
   Shuffle,
   StepForward,
+  Unlock,
   Volume2,
   VolumeX,
   Zap,
@@ -30,8 +32,15 @@ import {
 } from "@/sim/types";
 import { disturbanceWindowCopy } from "@/sim/disturbance-window";
 import { finiteOr, fixed } from "@/sim/metrics-format";
+import {
+  RESEARCH_DEFAULT_REPEATS,
+  RESEARCH_REPEATS_MAX,
+  RESEARCH_REPEATS_MIN,
+  type ResearchProtocol,
+  type ResearchRunSummary,
+} from "@/sim/research-mode";
 
-type TabId = "run" | "paint" | "world" | "loops";
+type TabId = "run" | "paint" | "world" | "loops" | "research";
 
 interface ControlPanelProps {
   running: boolean;
@@ -62,6 +71,18 @@ interface ControlPanelProps {
   studyCondition: StudyConditionId | null;
   onStudyCondition: (id: StudyConditionId) => void;
   metrics: Metrics | null;
+  researchArmed: boolean;
+  researchProtocol: ResearchProtocol | null;
+  researchRepeats: number;
+  onResearchRepeats: (n: number) => void;
+  onLockResearchProtocol: () => void;
+  onUnlockResearchProtocol: () => void;
+  onRunResearchBatch: () => void;
+  researchBatchRunning: boolean;
+  researchBatchProgress: { completed: number; total: number } | null;
+  researchResults: ResearchRunSummary[];
+  onExportResearch: (format: "jsonl" | "csv") => void;
+  researchHint: string | null;
 }
 
 function Row({
@@ -176,6 +197,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "paint", label: "Paint" },
   { id: "world", label: "World" },
   { id: "loops", label: "Loops" },
+  { id: "research", label: "Research" },
 ];
 
 const PAINT_HINT: Record<PaintMode, string> = {
@@ -216,7 +238,22 @@ export function ControlPanel(props: ControlPanelProps) {
     studyCondition,
     onStudyCondition,
     metrics,
+    researchArmed,
+    researchProtocol,
+    researchRepeats,
+    onResearchRepeats,
+    onLockResearchProtocol,
+    onUnlockResearchProtocol,
+    onRunResearchBatch,
+    researchBatchRunning,
+    researchBatchProgress,
+    researchResults,
+    onExportResearch,
+    researchHint,
   } = props;
+
+  const protocolLocked = researchArmed;
+
 
   const [tab, setTab] = useState<TabId>("run");
   const activePreset = PRESETS.find((p) => p.id === preset);
@@ -248,7 +285,7 @@ export function ControlPanel(props: ControlPanelProps) {
         </Button>
       </div>
 
-      <div className="grid shrink-0 grid-cols-4 gap-1 px-5 pb-4">
+      <div className="grid shrink-0 grid-cols-5 gap-1 px-5 pb-4">
         {TABS.map((t) => {
           const on = tab === t.id;
           return (
@@ -296,9 +333,11 @@ export function ControlPanel(props: ControlPanelProps) {
                       type="button"
                       title={c.blurb}
                       onClick={() => onStudyCondition(c.id)}
+                      disabled={protocolLocked}
                       className={cn(
                         "rounded-full px-3 py-1.5 text-sm transition-colors duration-150",
                         on ? "bg-accent text-accent-fg" : "bg-raised text-muted hover:text-fg",
+                        protocolLocked && "opacity-60",
                       )}
                       aria-pressed={on}
                     >
@@ -338,9 +377,15 @@ export function ControlPanel(props: ControlPanelProps) {
             >
               <ToggleRow
                 label="Lock seed"
-                description="Reseed reuses the current key instead of drawing a new one."
-                checked={seedLocked}
-                onCheckedChange={onSeedLocked}
+                description={
+                  protocolLocked
+                    ? "Frozen by Research protocol lock."
+                    : "Reseed reuses the current key instead of drawing a new one."
+                }
+                checked={protocolLocked ? true : seedLocked}
+                onCheckedChange={(v) => {
+                  if (!protocolLocked) onSeedLocked(v);
+                }}
               />
             </Row>
             <div className="grid grid-cols-3 gap-2">
@@ -556,9 +601,11 @@ export function ControlPanel(props: ControlPanelProps) {
                           }),
                         })
                       }
+                      disabled={protocolLocked}
                       className={cn(
                         "rounded-full px-3 py-1.5 text-sm transition-colors duration-150",
                         on ? "bg-accent text-accent-fg" : "bg-raised text-muted hover:text-fg",
+                        protocolLocked && "opacity-60",
                       )}
                       aria-pressed={on}
                     >
@@ -580,11 +627,12 @@ export function ControlPanel(props: ControlPanelProps) {
                       step={1}
                       value={settings.disturbance.startGen}
                       label="Start generation"
-                      onChange={(v) =>
+                      onChange={(v) => {
+                        if (protocolLocked) return;
                         onSettings({
                           disturbance: { ...settings.disturbance, startGen: Math.round(v) },
-                        })
-                      }
+                        });
+                      }}
                     />
                   </Row>
                   <Row
@@ -606,11 +654,12 @@ export function ControlPanel(props: ControlPanelProps) {
                       step={1}
                       value={settings.disturbance.duration}
                       label="Duration"
-                      onChange={(v) =>
+                      onChange={(v) => {
+                        if (protocolLocked) return;
                         onSettings({
                           disturbance: { ...settings.disturbance, duration: Math.round(v) },
-                        })
-                      }
+                        });
+                      }}
                     />
                   </Row>
                   <Row
@@ -624,11 +673,12 @@ export function ControlPanel(props: ControlPanelProps) {
                       step={0.01}
                       value={settings.disturbance.amplitude}
                       label="Amplitude"
-                      onChange={(v) =>
+                      onChange={(v) => {
+                        if (protocolLocked) return;
                         onSettings({
                           disturbance: { ...settings.disturbance, amplitude: v },
-                        })
-                      }
+                        });
+                      }}
                     />
                   </Row>
                 </>
@@ -644,7 +694,10 @@ export function ControlPanel(props: ControlPanelProps) {
                   step={10}
                   value={settings.generationLimit}
                   label="Generation limit"
-                  onChange={(v) => onSettings({ generationLimit: Math.round(v) })}
+                  onChange={(v) => {
+                    if (protocolLocked) return;
+                    onSettings({ generationLimit: Math.round(v) });
+                  }}
                 />
               </Row>
               <Row
@@ -660,7 +713,10 @@ export function ControlPanel(props: ControlPanelProps) {
                   step={1}
                   value={settings.measurementInterval}
                   label="Measurement interval"
-                  onChange={(v) => onSettings({ measurementInterval: Math.round(v) })}
+                  onChange={(v) => {
+                    if (protocolLocked) return;
+                    onSettings({ measurementInterval: Math.round(v) });
+                  }}
                 />
               </Row>
             </div>
@@ -762,6 +818,127 @@ export function ControlPanel(props: ControlPanelProps) {
             </div>
           </div>
         ) : null}
+
+        {tab === "research" ? (
+          <div className="space-y-5">
+            <GuidanceCard eyebrow="Research" title="Locked batch protocol">
+              Opt-in controlled runs. Lock seed, study condition, and disturbance
+              schedule, then repeat N times and export summaries for offline compare.
+              Exploratory Run / World / Loops stay available when you leave this tab
+              and unlock. Metrics remain observations — not claims of cognition or life.
+            </GuidanceCard>
+            <p className="text-xs leading-relaxed text-subtle">
+              Before locking: pick a study condition on Run, set disturbance and a
+              generation limit &gt; 0 on World. Batch rejects unlimited (0) horizons.
+            </p>
+            <div className="space-y-3 rounded-lg border border-border bg-raised/40 px-3 py-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-sm text-fg">Protocol lock</div>
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
+                  {protocolLocked ? "armed" : "exploratory"}
+                </span>
+              </div>
+              {protocolLocked && researchProtocol ? (
+                <p className="font-mono text-xs leading-relaxed text-muted">
+                  seed={researchProtocol.seedKey >>> 0} · {researchProtocol.studyCondition} ·{" "}
+                  {researchProtocol.schedule.id}@{researchProtocol.schedule.startGen}/
+                  {researchProtocol.schedule.duration}/a=
+                  {researchProtocol.schedule.amplitude.toFixed(2)} · limit=
+                  {researchProtocol.generationLimit} · measure=
+                  {researchProtocol.measurementInterval || "off"}
+                </p>
+              ) : (
+                <p className="text-xs leading-relaxed text-subtle">
+                  Not locked. Current seed {seedKey >>> 0}
+                  {studyCondition ? ` · ${studyCondition}` : " · no study pack"}
+                  {settings.generationLimit > 0
+                    ? ` · limit ${settings.generationLimit}`
+                    : " · set generationLimit > 0 in World"}
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {protocolLocked ? (
+                  <Button
+                    variant="secondary"
+                    onClick={onUnlockResearchProtocol}
+                    disabled={researchBatchRunning}
+                  >
+                    <Unlock className="size-4" />
+                    Unlock
+                  </Button>
+                ) : (
+                  <Button variant="accent" onClick={onLockResearchProtocol}>
+                    <Lock className="size-4" />
+                    Lock protocol
+                  </Button>
+                )}
+              </div>
+              {researchHint ? (
+                <p className="text-xs leading-relaxed text-accent">{researchHint}</p>
+              ) : null}
+            </div>
+            <Row
+              label="Repeats (N)"
+              value={String(researchRepeats)}
+              hint={`Same locked seed and settings each run. Default ${RESEARCH_DEFAULT_REPEATS}; clamp ${RESEARCH_REPEATS_MIN}–${RESEARCH_REPEATS_MAX}.`}
+            >
+              <RangeInput
+                min={RESEARCH_REPEATS_MIN}
+                max={RESEARCH_REPEATS_MAX}
+                step={1}
+                value={researchRepeats}
+                label="Repeats"
+                onChange={(v) => {
+                  if (researchBatchRunning) return;
+                  onResearchRepeats(v);
+                }}
+              />
+            </Row>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={onRunResearchBatch}
+                disabled={!protocolLocked || researchBatchRunning}
+              >
+                <Play className="size-4" />
+                {researchBatchRunning ? "Running…" : "Run batch"}
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={researchResults.length === 0 || researchBatchRunning}
+                onClick={() => onExportResearch("jsonl")}
+              >
+                Export JSONL
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={researchResults.length === 0 || researchBatchRunning}
+                onClick={() => onExportResearch("csv")}
+              >
+                Export CSV
+              </Button>
+            </div>
+            {researchBatchProgress ? (
+              <p className="font-mono text-xs tabular-nums text-muted">
+                Progress {researchBatchProgress.completed}/{researchBatchProgress.total}
+              </p>
+            ) : null}
+            {researchResults.length > 0 ? (
+              <p className="text-xs leading-relaxed text-subtle">
+                {researchResults.length} run summar
+                {researchResults.length === 1 ? "y" : "ies"} ready. Export downloads to
+                your browser download folder as
+                homeosys-research-&#123;condition&#125;-&#123;schedule&#125;-&#123;timestamp&#125;.jsonl
+                (or .csv).
+              </p>
+            ) : (
+              <p className="text-xs leading-relaxed text-subtle">
+                No batch results yet. Lock a protocol with generationLimit &gt; 0, then Run
+                batch.
+              </p>
+            )}
+          </div>
+        ) : null}
+
       </div>
     </div>
   );
