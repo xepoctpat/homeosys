@@ -15,21 +15,31 @@ test("validateEvidenceMatrix accepts all M2–M5 arms", () => {
   const v = validateEvidenceMatrix();
   assert.equal(v.ok, true);
   if (!v.ok) return;
-  assert.equal(v.arms.length, 9);
+  assert.equal(v.arms.length, 10);
   assert.equal(EVIDENCE_SEED_KEYS.length, EVIDENCE_DEFAULT_N);
 });
 
 test("M2 arms share schedule/limit/world and contrast studyCondition", () => {
   const arms = buildEvidenceArms().filter((a) => a.milestone === "m2");
-  assert.equal(arms.length, 2);
-  assert.equal(arms[0].protocolTemplate.schedule.id, arms[1].protocolTemplate.schedule.id);
-  assert.equal(arms[0].protocolTemplate.generationLimit, arms[1].protocolTemplate.generationLimit);
-  assert.equal(arms[0].protocolTemplate.cols, arms[1].protocolTemplate.cols);
-  assert.equal(arms[0].protocolTemplate.rows, arms[1].protocolTemplate.rows);
-  assert.equal(arms[0].protocolTemplate.worldPreset, arms[1].protocolTemplate.worldPreset);
+  assert.equal(arms.length, 3);
+  assert.deepEqual(
+    arms.map((a) => a.id),
+    ["m2-baseline", "m2-env-no-control", "m2-homeostatic"],
+  );
+  for (let i = 1; i < arms.length; i++) {
+    assert.equal(arms[0].protocolTemplate.schedule.id, arms[i].protocolTemplate.schedule.id);
+    assert.equal(arms[0].protocolTemplate.generationLimit, arms[i].protocolTemplate.generationLimit);
+    assert.equal(arms[0].protocolTemplate.cols, arms[i].protocolTemplate.cols);
+    assert.equal(arms[0].protocolTemplate.rows, arms[i].protocolTemplate.rows);
+    assert.equal(arms[0].protocolTemplate.worldPreset, arms[i].protocolTemplate.worldPreset);
+  }
   assert.equal(arms[0].protocolTemplate.controllerMode, "SetpointError");
   assert.equal(arms[0].protocolTemplate.organizationMode, "Central");
-  assert.notEqual(arms[0].protocolTemplate.studyCondition, arms[1].protocolTemplate.studyCondition);
+  const conditions = new Set(arms.map((a) => a.protocolTemplate.studyCondition));
+  assert.equal(conditions.size, 3);
+  assert.ok(conditions.has("baseline"));
+  assert.ok(conditions.has("envNoControl"));
+  assert.ok(conditions.has("homeostatic"));
 });
 
 test("M3 arms share sustained schedule and expose ultra fields after smoke run", () => {

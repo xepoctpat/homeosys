@@ -10,7 +10,7 @@ import {
 } from "./types.ts";
 import { UltraEpisodeLog, ULTRA_EPISODE_LOG_CAP, createUltraEpisodeEvent } from "./ultra-episode-log.ts";
 
-function packSettings(id: "baseline" | "homeostatic" | "ultrastable"): SimSettings {
+function packSettings(id: "baseline" | "envNoControl" | "homeostatic" | "ultrastable"): SimSettings {
   const pack = STUDY_CONDITIONS.find((c) => c.id === id);
   assert.ok(pack);
   return { ...DEFAULT_SETTINGS, ...pack.settings };
@@ -122,18 +122,31 @@ test("baseline glider advances one cell diagonally every four steps", () => {
   );
 });
 
-test("study condition packs match the three-condition table", () => {
+test("study condition packs match the study-condition table", () => {
   const byId = Object.fromEntries(STUDY_CONDITIONS.map((c) => [c.id, c]));
   assert.equal(byId.baseline.settings.environment, false);
   assert.equal(byId.baseline.settings.cybernetics, false);
   assert.equal(byId.baseline.settings.autoSetpoint, false);
   assert.equal(byId.baseline.settings.ultraEnabled, false);
 
+  assert.equal(byId.envNoControl.settings.environment, true);
+  assert.equal(byId.envNoControl.settings.cybernetics, false);
+  assert.equal(byId.envNoControl.settings.autoSetpoint, false);
+  assert.equal(byId.envNoControl.settings.ultraEnabled, false);
+  assert.equal(byId.envNoControl.settings.varietyEnabled, false);
+  assert.equal(byId.envNoControl.settings.autoEnabled, false);
+  assert.equal(byId.envNoControl.settings.observerEnabled, false);
+
   assert.equal(byId.homeostatic.settings.cybernetics, true);
   assert.equal(byId.homeostatic.settings.ultraEnabled, false);
 
   assert.equal(byId.ultrastable.settings.cybernetics, true);
   assert.equal(byId.ultrastable.settings.ultraEnabled, true);
+
+  assert.deepEqual(
+    STUDY_CONDITIONS.map((c) => c.id),
+    ["baseline", "envNoControl", "homeostatic", "ultrastable"],
+  );
 });
 
 function forceDensity(engine: SimEngine, density: number): void {

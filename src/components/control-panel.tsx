@@ -320,20 +320,21 @@ export function ControlPanel(props: ControlPanelProps) {
         {tab === "run" ? (
           <div className="space-y-5">
             <GuidanceCard eyebrow="Current study" title="Feedback under disturbance">
-              Compare three recorded setting packs over the same world pattern: baseline
-              (fixed B3/S23), homeostatic feedback, and ultrastable adaptation. Explore
-              freely here; controlled comparisons should keep seed, disturbance, and
-              generation limit fixed. Switching a study pack reseeds the field and resets
-              generation to 0 (seed key reused when locked). Metrics are observations, not
-              proof of cognition.
+              Compare recorded setting packs over the same world pattern: baseline (fixed
+              B3/S23, env off), env-no-control (env dynamics on, adaptive control off),
+              homeostatic feedback, and ultrastable adaptation. Explore freely here;
+              controlled comparisons should keep seed, disturbance, and generation limit
+              fixed. Switching a study pack reseeds the field and resets generation to 0
+              (seed key reused when locked). Metrics are observations, not proof of cognition.
             </GuidanceCard>
             <div>
               <div className="mb-2 text-sm text-fg">Study conditions</div>
               <p className="mb-2 text-xs leading-relaxed text-subtle">
-                Loop/env packs for the three-condition table. They do not rewrite the
-                disturbance schedule; World owns w(t). Switching packs reseeds and resets
-                Gen to 0 (same seed key when locked). Baseline turns auto target density
-                off so unregulated dynamics stay unregulated.
+                Loop/env packs for the study-condition table (baseline → env-no-control →
+                homeostatic → ultrastable). They do not rewrite the disturbance schedule;
+                World owns w(t). Switching packs reseeds and resets Gen to 0 (same seed key
+                when locked). Baseline and env-no-control turn auto target density off so
+                unregulated dynamics stay unregulated.
               </p>
               <div className="flex flex-wrap gap-2">
                 {STUDY_CONDITIONS.map((c) => {
@@ -847,9 +848,9 @@ export function ControlPanel(props: ControlPanelProps) {
             <ToggleRow
               label="Auto target density"
               description={
-                studyCondition === "baseline"
-                  ? "Off under Baseline — observes unregulated dynamics; setpoint does not auto-track."
-                  : "The target density tracks what this world can actually hold. Baseline study pack leaves this off."
+                studyCondition === "baseline" || studyCondition === "envNoControl"
+                  ? "Off under Baseline / Env-no-control — observes unregulated dynamics; setpoint does not auto-track."
+                  : "The target density tracks what this world can actually hold. Baseline and env-no-control packs leave this off."
               }
               checked={settings.autoSetpoint}
               onCheckedChange={(v) => onSettings({ autoSetpoint: v })}

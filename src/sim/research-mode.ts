@@ -139,10 +139,14 @@ export function validateProtocol(
   const studyCondition = input.studyCondition;
   if (
     studyCondition !== "baseline" &&
+    studyCondition !== "envNoControl" &&
     studyCondition !== "homeostatic" &&
     studyCondition !== "ultrastable"
   ) {
-    return { ok: false, error: "Select a study condition (baseline|homeostatic|ultrastable) before locking." };
+    return {
+      ok: false,
+      error: "Select a study condition (baseline|envNoControl|homeostatic|ultrastable) before locking.",
+    };
   }
 
   const seedKey = Number(input.seedKey);

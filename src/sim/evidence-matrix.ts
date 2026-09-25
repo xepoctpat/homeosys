@@ -66,6 +66,7 @@ export type EvidenceMilestone = "m2" | "m3" | "m4" | "m5";
 
 export type EvidenceArmId =
   | "m2-baseline"
+  | "m2-env-no-control"
   | "m2-homeostatic"
   | "m3-homeostatic"
   | "m3-ultrastable"
@@ -125,6 +126,7 @@ export function buildEvidenceArms(): EvidenceArm[] {
   };
 
   const m2Baseline = baseWorld({ studyCondition: "baseline", ...m2Shared });
+  const m2EnvNoControl = baseWorld({ studyCondition: "envNoControl", ...m2Shared });
   const m2Homeo = baseWorld({ studyCondition: "homeostatic", ...m2Shared });
 
   const m3Shared = {
@@ -174,6 +176,13 @@ export function buildEvidenceArms(): EvidenceArm[] {
       label: "M2 baseline (no feedback)",
       factor: "studyCondition=baseline",
       protocolTemplate: m2Baseline,
+    },
+    {
+      id: "m2-env-no-control",
+      milestone: "m2",
+      label: "M2 env-no-control (env on, adaptive control off)",
+      factor: "studyCondition=envNoControl",
+      protocolTemplate: m2EnvNoControl,
     },
     {
       id: "m2-homeostatic",
@@ -342,7 +351,7 @@ export function exportArmCsv(armResult: EvidenceArmResult): string {
 export function validateEvidenceMatrix(): { ok: true; arms: EvidenceArm[] } | { ok: false; error: string } {
   try {
     const arms = buildEvidenceArms();
-    if (arms.length < 9) return { ok: false, error: `expected ≥9 arms, got ${arms.length}` };
+    if (arms.length < 10) return { ok: false, error: `expected ≥10 arms, got ${arms.length}` };
     const ids = new Set(arms.map((a) => a.id));
     if (ids.size !== arms.length) return { ok: false, error: "duplicate arm ids" };
     for (const a of arms) {
@@ -355,12 +364,14 @@ export function validateEvidenceMatrix(): { ok: true; arms: EvidenceArm[] } | { 
     }
     // Pairing invariants
     const m2 = arms.filter((a) => a.milestone === "m2");
-    if (m2.length !== 2) return { ok: false, error: "M2 must have 2 arms" };
-    if (m2[0].protocolTemplate.schedule.id !== m2[1].protocolTemplate.schedule.id) {
-      return { ok: false, error: "M2 arms must share schedule" };
-    }
-    if (m2[0].protocolTemplate.generationLimit !== m2[1].protocolTemplate.generationLimit) {
-      return { ok: false, error: "M2 arms must share generationLimit" };
+    if (m2.length !== 3) return { ok: false, error: "M2 must have 3 arms" };
+    for (let i = 1; i < m2.length; i++) {
+      if (m2[0].protocolTemplate.schedule.id !== m2[i].protocolTemplate.schedule.id) {
+        return { ok: false, error: "M2 arms must share schedule" };
+      }
+      if (m2[0].protocolTemplate.generationLimit !== m2[i].protocolTemplate.generationLimit) {
+        return { ok: false, error: "M2 arms must share generationLimit" };
+      }
     }
     const m4 = arms.filter((a) => a.milestone === "m4");
     if (m4[0].protocolTemplate.controllerMode === m4[1].protocolTemplate.controllerMode) {

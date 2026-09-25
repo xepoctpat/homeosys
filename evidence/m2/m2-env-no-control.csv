@@ -1,0 +1,11 @@
+runIndex,seedKey,studyCondition,controllerMode,organizationMode,scheduleId,scheduleStartGen,scheduleDuration,scheduleAmplitude,generationLimit,measurementInterval,worldPreset,cols,rows,generation,density,inK,timeInKFraction,cumulativeDistanceOutsideK,recoveries,meanAbsDensityError,interventionRate,coordinationBandwidthProxy,ultraProbeCount,ultraKeptCount,ultraRevertedCount,lastUltraOutcome,lastUltraGeneration,stableEpisodeLength,lastUltraMinPop,lastUltraDeltaPop,rule,w
+0,167837697,envNoControl,SetpointError,Central,pulse,40,30,0.55,200,0,homeostat,48,36,200,0.10474537037037036,true,1,0,0,0.07137638888888889,0,0,0,0,0,,,200,,,B3/S23,0
+1,167837698,envNoControl,SetpointError,Central,pulse,40,30,0.55,200,0,homeostat,48,36,200,0.11631944444444445,true,0.825,0.20520833333333338,1,0.06537743055555556,0,0,0,0,0,,,200,,,B3/S23,0
+2,167837699,envNoControl,SetpointError,Central,pulse,40,30,0.55,200,0,homeostat,48,36,200,0.12268518518518519,true,1,0,0,0.08253460648148149,0,0,0,0,0,,,200,,,B3/S23,0
+3,167837700,envNoControl,SetpointError,Central,pulse,40,30,0.55,200,0,homeostat,48,36,200,0,false,0,4.000000000000003,0,0.16000000000000011,0,0,0,0,0,,,200,,,B3/S23,0
+4,167837701,envNoControl,SetpointError,Central,pulse,40,30,0.55,200,0,homeostat,48,36,200,0.1568287037037037,true,1,0,0,0.05836921296296297,0,0,0,0,0,,,200,,,B3/S23,0
+5,167837702,envNoControl,SetpointError,Central,pulse,40,30,0.55,200,0,homeostat,48,36,200,0,false,0,4.000000000000003,0,0.16000000000000011,0,0,0,0,0,,,200,,,B3/S23,0
+6,167837703,envNoControl,SetpointError,Central,pulse,40,30,0.55,200,0,homeostat,48,36,200,0,false,0,4.000000000000003,0,0.16000000000000011,0,0,0,0,0,,,200,,,B3/S23,0
+7,167837704,envNoControl,SetpointError,Central,pulse,40,30,0.55,200,0,homeostat,48,36,200,0.1574074074074074,true,0.985,0.005601851851851851,2,0.05034942129629624,0,0,0,0,0,,,200,,,B3/S23,0
+8,167837705,envNoControl,SetpointError,Central,pulse,40,30,0.55,200,0,homeostat,48,36,200,0,false,0,3.9091435185185217,0,0.15954571759259273,0,0,0,0,0,,,200,,,B3/S23,0
+9,167837706,envNoControl,SetpointError,Central,pulse,40,30,0.55,200,0,homeostat,48,36,200,0.1255787037037037,true,1,0,0,0.06763657407407413,0,0,0,0,0,,,200,,,B3/S23,0

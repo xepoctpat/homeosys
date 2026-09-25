@@ -464,7 +464,7 @@ export const PRESETS: {
   },
 ];
 
-export type StudyConditionId = "baseline" | "homeostatic" | "ultrastable";
+export type StudyConditionId = "baseline" | "envNoControl" | "homeostatic" | "ultrastable";
 
 export const STUDY_CONDITIONS: {
   id: StudyConditionId;
@@ -478,6 +478,21 @@ export const STUDY_CONDITIONS: {
     blurb: "Fixed B3/S23. Environment and feedback off; auto target density off. Observes unregulated dynamics.",
     settings: {
       environment: false,
+      cybernetics: false,
+      autoSetpoint: false,
+      ultraEnabled: false,
+      varietyEnabled: false,
+      autoEnabled: false,
+      observerEnabled: false,
+      noise: 0,
+    },
+  },
+  {
+    id: "envNoControl",
+    name: "Env, no control",
+    blurb: "Environment dynamics on; cybernetics and other adaptive controllers off (like baseline). Isolates world disturbance without feedback regulation.",
+    settings: {
+      environment: true,
       cybernetics: false,
       autoSetpoint: false,
       ultraEnabled: false,

@@ -25,7 +25,7 @@ scientific closure of M2–M5.
 
 | Milestone | Arms | Shared factor | Contrast |
 |-----------|------|---------------|----------|
-| **M2** homeostasis | `m2-baseline`, `m2-homeostatic` | pulse@40/30 a=0.55, limit=200, SetpointError+Central, 48×36 homeostat | studyCondition baseline vs homeostatic |
+| **M2** homeostasis | `m2-baseline`, `m2-env-no-control`, `m2-homeostatic` | pulse@40/30 a=0.55, limit=200, SetpointError+Central, 48×36 homeostat | studyCondition baseline vs envNoControl vs homeostatic |
 | **M3** ultrastability | `m3-homeostatic`, `m3-ultrastable` | sustained@30/120 a=0.55, limit=200 | studyCondition homeostatic vs ultrastable; UltraEpisodeLog aggregates in each summary |
 | **M4** controller | `m4-setpoint`, `m4-viability` | `abControllerProtocols` shared schedule | controllerMode SetpointError vs ViabilityBand |
 | **M5** organization | `m5-central`, `m5-local`, `m5-coordinated` | `abcOrganizationProtocols` shared schedule | organizationMode Central \| Local \| Coordinated |
