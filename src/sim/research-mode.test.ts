@@ -21,7 +21,7 @@ import {
 import { DEFAULT_SETTINGS, type SimSettings } from "./types.ts";
 
 function baseProtocol(over: Partial<ResearchProtocol> = {}): ResearchProtocol {
-  return {
+  const validated = validateProtocol({
     seedKey: 0xc0ffee,
     studyCondition: "homeostatic",
     schedule: { id: "pulse", startGen: 10, duration: 5, amplitude: 0.4 },
@@ -35,7 +35,9 @@ function baseProtocol(over: Partial<ResearchProtocol> = {}): ResearchProtocol {
     organizationMode: "Central",
     coordCouplingAlpha: 0.3,
     ...over,
-  };
+  });
+  if (!validated.ok) throw new Error(validated.error);
+  return validated.protocol;
 }
 
 test("clampRepeats defaults and clamps 1–100", () => {
@@ -47,7 +49,20 @@ test("clampRepeats defaults and clamps 1–100", () => {
 });
 
 test("validateProtocol rejects generationLimit=0", () => {
-  const result = validateProtocol(baseProtocol({ generationLimit: 0 }));
+  const result = validateProtocol({
+    seedKey: 0xc0ffee,
+    studyCondition: "homeostatic",
+    schedule: { id: "pulse", startGen: 10, duration: 5, amplitude: 0.4 },
+    generationLimit: 0,
+    measurementInterval: 10,
+    cols: 48,
+    rows: 36,
+    worldPreset: "classic",
+    repeats: 3,
+    controllerMode: "SetpointError",
+    organizationMode: "Central",
+    coordCouplingAlpha: 0.3,
+  });
   assert.equal(result.ok, false);
   if (!result.ok) {
     assert.match(result.error, /generationLimit must be > 0/);

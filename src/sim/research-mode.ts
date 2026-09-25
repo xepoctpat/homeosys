@@ -16,6 +16,16 @@ import {
   type StudyConditionId,
   type UltraEpisodeOutcome,
 } from "./types.ts";
+import {
+  THETA_SCHEMA_VERSION,
+  assertThetaV0,
+  defaultRuleString,
+  genomeFromString,
+  makeProtocolId,
+  resolveThetaKnobsFromPack,
+  settingsFromTheta,
+  type ThetaV0,
+} from "./theta-v0.ts";
 
 /** Default batch repeat count. */
 export const RESEARCH_DEFAULT_REPEATS = 10;
@@ -50,6 +60,35 @@ export interface ResearchProtocol {
    * Ignored unless organizationMode=Coordinated. VSM remains a hypothesis only.
    */
   coordCouplingAlpha: number;
+
+  /** Stable protocol snapshot id (content-derived unless overridden). */
+  protocolId: string;
+  /** Evidence arm id when locked from the ladder; otherwise null. */
+  armId: string | null;
+
+  /** Env knobs stamped into the lock (Architect freeze — complete θ). */
+  environment: boolean;
+  climate: number;
+  seasonRate: number;
+  seasonAmp: number;
+  energyRichness: number;
+  metabolicHeat: number;
+  noise: number;
+
+  cybernetics: boolean;
+  homeoGain: number;
+  autoSetpoint: boolean;
+  setpoint: number;
+  ultraEnabled: boolean;
+  varietyEnabled: boolean;
+  autoEnabled: boolean;
+  observerEnabled: boolean;
+
+  /** Genome string (B/S) at lock time. */
+  rule: string;
+
+  densityMin: number;
+  densityMax: number;
 }
 
 /** Per-generation sample at a measurement tick (optional, cheap JSONL). */
@@ -106,6 +145,8 @@ export interface ResearchRunSummary {
   lastUltraDeltaPop: number | null;
   rule: string;
   w: number;
+  /** Full ThetaV0 stamp (schemaVersion=theta.v0) for replay / export. */
+  theta: ThetaV0;
   /** Optional measurement-tick time series when interval > 0. */
   series?: ResearchSeriesPoint[];
 }
@@ -119,19 +160,111 @@ export function clampRepeats(n: number): number {
   return Math.max(RESEARCH_REPEATS_MIN, Math.min(RESEARCH_REPEATS_MAX, Math.round(n)));
 }
 
-/** Build SimSettings from a locked protocol (study pack + schedule + horizons). */
+/**
+ * Build SimSettings from a locked protocol.
+ * Uses ONLY stamped protocol knobs (no silent DEFAULT_SETTINGS+pack re-merge).
+ * Packs seed defaults at validateProtocol/lock time; the stamp must already be complete.
+ */
 export function settingsFromProtocol(protocol: ResearchProtocol): SimSettings {
-  const pack = STUDY_CONDITIONS.find((c) => c.id === protocol.studyCondition);
-  return normalizeSimSettings({
-    ...DEFAULT_SETTINGS,
-    ...(pack?.settings ?? {}),
-    disturbance: protocol.schedule,
-    generationLimit: protocol.generationLimit,
-    measurementInterval: protocol.measurementInterval,
+  return settingsFromTheta(thetaFromProtocol(protocol));
+}
+
+/** Build Architect-freeze ThetaV0 from a locked (complete) ResearchProtocol. */
+export function thetaFromProtocol(protocol: ResearchProtocol): ThetaV0 {
+  const schedule = {
+    id: protocol.schedule.id,
+    startGen: protocol.schedule.startGen,
+    duration: protocol.schedule.duration,
+    amplitude: protocol.schedule.amplitude,
+  };
+  const base = {
+    schemaVersion: THETA_SCHEMA_VERSION,
+    protocolId: protocol.protocolId,
+    armId: protocol.armId,
+    worldPreset: protocol.worldPreset,
+    cols: protocol.cols,
+    rows: protocol.rows,
+    schedule,
+    environment: protocol.environment,
+    climate: protocol.climate,
+    seasonRate: protocol.seasonRate,
+    seasonAmp: protocol.seasonAmp,
+    energyRichness: protocol.energyRichness,
+    metabolicHeat: protocol.metabolicHeat,
+    noise: protocol.noise,
+    studyCondition: protocol.studyCondition,
+    cybernetics: protocol.cybernetics,
+    homeoGain: protocol.homeoGain,
+    autoSetpoint: protocol.autoSetpoint,
+    setpoint: protocol.setpoint,
     controllerMode: protocol.controllerMode,
     organizationMode: protocol.organizationMode,
     coordCouplingAlpha: protocol.coordCouplingAlpha,
-  });
+    ultraEnabled: protocol.ultraEnabled,
+    varietyEnabled: protocol.varietyEnabled,
+    autoEnabled: protocol.autoEnabled,
+    observerEnabled: protocol.observerEnabled,
+    rule: protocol.rule,
+    densityMin: protocol.densityMin,
+    densityMax: protocol.densityMax,
+    generationLimit: protocol.generationLimit,
+    measurementInterval: protocol.measurementInterval,
+    seedKey: protocol.seedKey,
+    repeats: protocol.repeats,
+  } satisfies ThetaV0;
+  const protocolId =
+    typeof protocol.protocolId === "string" && protocol.protocolId.length > 0
+      ? protocol.protocolId
+      : makeProtocolId(base);
+  const validated = assertThetaV0({ ...base, protocolId });
+  if (!validated.ok) throw new Error(validated.error);
+  return validated.theta;
+}
+
+/** Rebuild a ResearchProtocol from a stamped ThetaV0 (export replay). */
+export function protocolFromTheta(theta: ThetaV0): ResearchProtocol {
+  const validated = assertThetaV0(theta);
+  if (!validated.ok) throw new Error(validated.error);
+  const t = validated.theta;
+  return {
+    seedKey: t.seedKey,
+    studyCondition: t.studyCondition,
+    schedule: {
+      id: t.schedule.id,
+      startGen: t.schedule.startGen,
+      duration: t.schedule.duration,
+      amplitude: t.schedule.amplitude,
+    },
+    generationLimit: t.generationLimit,
+    measurementInterval: t.measurementInterval,
+    cols: t.cols,
+    rows: t.rows,
+    worldPreset: t.worldPreset,
+    repeats: t.repeats,
+    controllerMode: t.controllerMode,
+    organizationMode: t.organizationMode,
+    coordCouplingAlpha: t.coordCouplingAlpha,
+    protocolId: t.protocolId,
+    armId: t.armId,
+    environment: t.environment,
+    climate: t.climate,
+    seasonRate: t.seasonRate,
+    seasonAmp: t.seasonAmp,
+    energyRichness: t.energyRichness,
+    metabolicHeat: t.metabolicHeat,
+    noise: t.noise,
+    cybernetics: t.cybernetics,
+    homeoGain: t.homeoGain,
+    autoSetpoint: t.autoSetpoint,
+    setpoint: t.setpoint,
+    ultraEnabled: t.ultraEnabled,
+    varietyEnabled: t.varietyEnabled,
+    autoEnabled: t.autoEnabled,
+    observerEnabled: t.observerEnabled,
+    rule: t.rule,
+    densityMin: t.densityMin,
+    densityMax: t.densityMax,
+  };
 }
 
 /**
@@ -189,32 +322,104 @@ export function validateProtocol(
   const measurementInterval = Math.max(0, Math.round(Number(input.measurementInterval) || 0));
   const repeats = clampRepeats(Number(input.repeats ?? RESEARCH_DEFAULT_REPEATS));
 
-  const controllerMode = normalizeControllerMode(input.controllerMode);
-  const organizationMode = normalizeOrganizationMode(input.organizationMode);
-  const rawAlpha = Number(
-    (input as { coordCouplingAlpha?: number }).coordCouplingAlpha ?? DEFAULT_COORD_COUPLING_ALPHA,
-  );
-  const coordCouplingAlpha = Number.isFinite(rawAlpha)
-    ? Math.max(0, Math.min(1, rawAlpha))
-    : DEFAULT_COORD_COUPLING_ALPHA;
+  const knobs = resolveThetaKnobsFromPack(studyCondition, {
+    environment: input.environment,
+    climate: input.climate,
+    seasonRate: input.seasonRate,
+    seasonAmp: input.seasonAmp,
+    energyRichness: input.energyRichness,
+    metabolicHeat: input.metabolicHeat,
+    noise: input.noise,
+    cybernetics: input.cybernetics,
+    homeoGain: input.homeoGain,
+    autoSetpoint: input.autoSetpoint,
+    setpoint: input.setpoint,
+    ultraEnabled: input.ultraEnabled,
+    varietyEnabled: input.varietyEnabled,
+    autoEnabled: input.autoEnabled,
+    observerEnabled: input.observerEnabled,
+    densityMin: input.densityMin,
+    densityMax: input.densityMax,
+    controllerMode: input.controllerMode,
+    organizationMode: input.organizationMode,
+    coordCouplingAlpha: input.coordCouplingAlpha,
+    rule: input.rule,
+  });
 
-  return {
-    ok: true,
-    protocol: {
-      seedKey: seedKey >>> 0,
-      studyCondition,
-      schedule,
-      generationLimit: Math.round(generationLimit),
-      measurementInterval,
-      cols,
-      rows,
-      worldPreset,
-      repeats,
-      controllerMode,
-      organizationMode,
-      coordCouplingAlpha,
-    },
+  const draft: ResearchProtocol = {
+    seedKey: seedKey >>> 0,
+    studyCondition,
+    schedule,
+    generationLimit: Math.round(generationLimit),
+    measurementInterval,
+    cols,
+    rows,
+    worldPreset,
+    repeats,
+    controllerMode: knobs.controllerMode,
+    organizationMode: knobs.organizationMode,
+    coordCouplingAlpha: knobs.coordCouplingAlpha,
+    protocolId: typeof input.protocolId === "string" ? input.protocolId : "",
+    armId: input.armId === undefined ? null : input.armId,
+    environment: knobs.environment,
+    climate: knobs.climate,
+    seasonRate: knobs.seasonRate,
+    seasonAmp: knobs.seasonAmp,
+    energyRichness: knobs.energyRichness,
+    metabolicHeat: knobs.metabolicHeat,
+    noise: knobs.noise,
+    cybernetics: knobs.cybernetics,
+    homeoGain: knobs.homeoGain,
+    autoSetpoint: knobs.autoSetpoint,
+    setpoint: knobs.setpoint,
+    ultraEnabled: knobs.ultraEnabled,
+    varietyEnabled: knobs.varietyEnabled,
+    autoEnabled: knobs.autoEnabled,
+    observerEnabled: knobs.observerEnabled,
+    rule: knobs.rule,
+    densityMin: knobs.densityMin,
+    densityMax: knobs.densityMax,
   };
+
+  if (!draft.protocolId) {
+    draft.protocolId = makeProtocolId({
+      worldPreset: draft.worldPreset,
+      cols: draft.cols,
+      rows: draft.rows,
+      schedule: {
+        id: draft.schedule.id,
+        startGen: draft.schedule.startGen,
+        duration: draft.schedule.duration,
+        amplitude: draft.schedule.amplitude,
+      },
+      environment: draft.environment,
+      climate: draft.climate,
+      seasonRate: draft.seasonRate,
+      seasonAmp: draft.seasonAmp,
+      energyRichness: draft.energyRichness,
+      metabolicHeat: draft.metabolicHeat,
+      noise: draft.noise,
+      studyCondition: draft.studyCondition,
+      cybernetics: draft.cybernetics,
+      homeoGain: draft.homeoGain,
+      autoSetpoint: draft.autoSetpoint,
+      setpoint: draft.setpoint,
+      controllerMode: draft.controllerMode,
+      organizationMode: draft.organizationMode,
+      coordCouplingAlpha: draft.coordCouplingAlpha,
+      ultraEnabled: draft.ultraEnabled,
+      varietyEnabled: draft.varietyEnabled,
+      autoEnabled: draft.autoEnabled,
+      observerEnabled: draft.observerEnabled,
+      rule: draft.rule,
+      densityMin: draft.densityMin,
+      densityMax: draft.densityMax,
+      generationLimit: draft.generationLimit,
+      measurementInterval: draft.measurementInterval,
+    });
+  }
+
+  return { ok: true, protocol: draft };
 }
 
 /** Snapshot locked fields from live UI state into a protocol candidate. */
@@ -226,7 +431,13 @@ export function captureProtocol(args: {
   rows: number;
   worldPreset: PresetId;
   repeats: number;
+  rule?: string;
+  armId?: string | null;
+  protocolId?: string;
 }): ProtocolValidation {
+  // Study packs own loop/env flags at lock time. Live World settings may still carry
+  // exploratory knobs; do not let them override pack-owned θ fields. Modes, schedule,
+  // horizons, K, and α come from the live lock surface; packs seed the rest.
   return validateProtocol({
     seedKey: args.seedKey,
     studyCondition: args.studyCondition,
@@ -240,6 +451,11 @@ export function captureProtocol(args: {
     controllerMode: args.settings.controllerMode,
     organizationMode: args.settings.organizationMode,
     coordCouplingAlpha: args.settings.coordCouplingAlpha,
+    densityMin: args.settings.densityMin,
+    densityMax: args.settings.densityMax,
+    rule: args.rule ?? defaultRuleString(),
+    armId: args.armId ?? null,
+    protocolId: args.protocolId,
   });
 }
 
@@ -303,6 +519,7 @@ export function summarizeRun(
     lastUltraDeltaPop: metrics.lastUltraDeltaPop,
     rule: metrics.rule,
     w: metrics.w,
+    theta: thetaFromProtocol(protocol),
     ...(series && series.length > 0 ? { series } : {}),
   };
 }
@@ -324,6 +541,9 @@ export function runOne(
   engine.allocate(protocol.cols, protocol.rows);
   engine.applySettings(settings);
   engine.seed(protocol.worldPreset, protocol.seedKey);
+  // Apply locked rule after seed (seed resets genome to classic).
+  const lockedGenome = genomeFromString(protocol.rule);
+  if (lockedGenome) engine.genome = lockedGenome;
 
   const collectSeries = options.collectSeries !== false && protocol.measurementInterval > 0;
   const series: ResearchSeriesPoint[] = [];

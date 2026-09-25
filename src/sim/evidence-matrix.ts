@@ -15,10 +15,12 @@ import {
   exportJsonl,
   runBatch,
   validateProtocol,
+  thetaFromProtocol,
   type EngineFactory,
   type ResearchProtocol,
   type ResearchRunSummary,
 } from "./research-mode.ts";
+import { THETA_SCHEMA_VERSION, type ThetaV0 } from "./theta-v0.ts";
 import type { DisturbanceSchedule, PresetId, StudyConditionId } from "./types.ts";
 
 /** Default N for published evidence arms (prefix of EVIDENCE_SEED_KEYS). */
@@ -383,6 +385,8 @@ export interface EvidenceProtocolMeta {
   seedKeys: number[];
   n: number;
   protocol: Omit<ResearchProtocol, "seedKey" | "repeats">;
+  schemaVersion: typeof THETA_SCHEMA_VERSION;
+  theta: ThetaV0;
   notes: string[];
 }
 
@@ -396,6 +400,13 @@ export function armProtocolMeta(armResult: EvidenceArmResult): EvidenceProtocolM
     seedKeys: [...armResult.seedKeys],
     n: armResult.seedKeys.length,
     protocol: armResult.arm.protocolTemplate,
+    schemaVersion: THETA_SCHEMA_VERSION,
+    theta: thetaFromProtocol({
+      ...armResult.arm.protocolTemplate,
+      seedKey: armResult.seedKeys[0] ?? 0,
+      repeats: armResult.seedKeys.length,
+      armId: armResult.arm.id,
+    }),
     notes: [
       "Observational only — eng scaffolding ≠ scientific closure.",
       "Protocol-calibrated observational K (densityMin/Max from PROTOCOL_CALIBRATED_K; unregulated M2 baseline+envNoControl percentiles).",

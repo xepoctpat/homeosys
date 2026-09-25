@@ -114,6 +114,11 @@ K = { x : z_i_min <= z_i(x) <= z_i_max for every essential variable i }
 The primary outcome is not maximum population. It is the ability to remain in,
 or recover to, `K` under a declared disturbance schedule.
 
+
+### ThetaV0 stamp (C1)
+
+Locked runs and evidence exports carry a full **ThetaV0** object (`schemaVersion: "theta.v0"`) including env knobs, schedule, seed, and rule. See [`docs/theta-v0.md`](theta-v0.md). Observational ≠ closure; M6 gated.
+
 ## Research sequence
 
 ### 1. Validation and baseline
