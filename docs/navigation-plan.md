@@ -1,9 +1,9 @@
 # Homeosys navigation plan
 
 **Settled:** 2026-09-25 (Coordinator + Strategist, System Architect, Developer, Reviewer)  
-**North-star document:** `docs/research-roadmap.md` (with Reviewer amendments A–E applied or queued)  
+**North-star document:** `docs/research-roadmap.md` (with Reviewer amendments A–E applied)  
 **Repo:** `/workspace/repos/homeosys` · work on `main` · no PRs · `prism` / `prism-clean` locked  
-**Mode:** Captain’s quarters — nudge user only on status or blockers
+**Mode:** Captain’s quarters — First Mate is the sole status voice to the user; workers report completions to First Mate, not the captain
 
 ## Principles (anti-drift)
 
@@ -12,7 +12,8 @@
 - Pattern persistence ≠ autopoiesis; no life / cognition / consciousness claims.
 - Exploratory play ≠ controlled evidence (need locked seed, K, schedule).
 - StudyConditionPack must not redefine world/disturbance; World must not redefine loops.
-- Current experimental target stamp: **Steps 1–2** until evidence moves it.
+- **Current experimental target stamp:** Steps **1–2** until evidence moves it.
+- **Engineering stamp (observational):** controller ladder through **M4 modes** is present in code; **evidence distributions are still pending** (ResearchMode exists; Steps 3–4 are not scientifically closed).
 
 ## Long-horizon milestones
 
@@ -21,17 +22,19 @@
 | M1 | Validation/baseline | Deterministic replay + seeded B3/S23; fixed-rule no-env protocol used (partially shipped: Study packs + seedKey `503b05d`) |
 | M2 | Homeostasis | Baseline vs env-no-control vs feedback; **K predeclared**; time-in-K / recovery **distributions** |
 | M3 | Ultrastability | Nonstationary schedule; episode log (rule changes, failed trials, mortality, stable-episode length) vs M2 |
-| M4 | Setpoint vs viability | Density-error vs safe-interval; same disturbance family |
-| M5 | Hierarchy/autonomy | Central vs local vs coordinated; intervention/delay/bandwidth/ablation; VSM = hypothesis only |
+| M4 | Setpoint vs viability | Density-error vs safe-interval; same disturbance family (controller modes shipped `56e3730`; multi-seed evidence still open) |
+| M5 | Hierarchy/autonomy | Central vs local vs coordinated; intervention/delay/bandwidth/ablation; VSM = hypothesis only — **next eng thin slice in flight / queued** |
 | M6 | Autopoiesis | **Gated** — after M1–M5; needs component + resource + boundary state; operational closure criteria predeclared |
 | M7 | Complex adaptive | **Gated after M5 metrics** — may run parallel to gated M6; autopoiesis not a prerequisite; predeclared CAS observables; no single power-law “criticality” |
 
 ## Near-term engineering order
 
-1. Declare **K** + essential variables `z_i` + run aggregators (time-in-K, distance outside K, recovery) — **next**
-2. First-class **DisturbanceSchedule** `w(t)` shared across study packs
-3. **UltraEpisodeLog** schema + UI counts
-4. **ResearchMode** shell (lock seed+condition+schedule, N repeats, export, replay) — keep exploratory default
+1. Declare **K** + essential variables `z_i` + run aggregators (time-in-K, distance outside K, recovery) — **done** `f5e3323`
+2. First-class **DisturbanceSchedule** `w(t)` shared across study packs — **done** `951caf6` (harden follow-up `43225f9`)
+3. **UltraEpisodeLog** schema + UI counts — **done** `5f38933`
+4. **ResearchMode** shell (lock seed+condition+schedule, N repeats, export, replay) — keep exploratory default — **done** `00e1dc9`
+5. **M4 controller modes** (SetpointError vs ViabilityBand) — **done** `56e3730` (modes only; not a closed evidence claim)
+6. **Next:** M5 hierarchy thin slice (central vs local vs coordinated) — in flight / queued
 
 ## Component ownership (Architect)
 
@@ -44,16 +47,23 @@
 
 ## Doc amendments (Reviewer) — apply to research-roadmap.md + README
 
-A. Hard gates 5→6 and 6→7  
-B. Soften app-scope “expose autopoiesis” to hypothesis-only  
-C. Move autopoiesis condition out of “at minimum” into deferred  
-D. Align README extend-toward with gates  
-E. Stamp current target Steps 1–2  
+A. Hard gates 5→6; soften 6→7 so CAS may follow M5 metrics in parallel with gated M6 — applied  
+B. Soften app-scope “expose autopoiesis” to hypothesis-only — applied  
+C. Move autopoiesis condition out of “at minimum” into deferred — applied  
+D. Align README extend-toward with gates — applied  
+E. Stamp current target Steps 1–2 — applied  
 
 ## Active assignment log
 
 | When | Who | What | Status |
 |------|-----|------|--------|
 | 2026-09-25 | Developer | Step-1 Study packs + seedKey | Done `503b05d` |
-| 2026-09-25 | Editor | Roadmap/README amendments A–E | Assigned |
-| 2026-09-25 | Developer | K viable-region metrics | Assigned |
+| 2026-09-25 | Editor | Roadmap/README amendments A–E + navigation plan | Done (docs track; CAS 6→7 soften follow-up on main) |
+| 2026-09-25 | Developer | K viable-region metrics | Done `f5e3323` |
+| 2026-09-25 | Developer | DisturbanceSchedule w(t) | Done `951caf6` |
+| 2026-09-25 | Developer | UltraEpisodeLog | Done `5f38933` |
+| 2026-09-25 | Developer | ResearchMode batch/export | Done `00e1dc9` |
+| 2026-09-25 | Developer | M4 SetpointError vs ViabilityBand modes | Done `56e3730` |
+| 2026-09-25 | Editor | Must-fix / residual life–framing UI copy | Done `600ebad`, `de9e52d` |
+| 2026-09-25 | Reviewer | Conditional passes on copy + ResearchMode / M4 slices | Noted (engineering present; evidence distributions still pending) |
+| 2026-09-25 | Developer | M5 hierarchy thin slice | In flight / queued |
