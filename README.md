@@ -75,7 +75,7 @@ hypotheses — not claims about persistent patterns.
 - **M6 remains HARD-GATED**
 - **Characterization→engine lock (captain ACCEPTED):** C1–C3 before E1; M2-only characterization first; θ v0 + env knobs in protocol; `schemaVersion` + full θ on exports before sweeps; first sweep axes = ladder factors only (condition/controller/org/α/schedule), not continuous gains; no multi-system/meta-dynamics/UI theater
 - **C1 landed @ `44cfaf9`:** ThetaV0 + golden replay; evidence JSONL embeds `theta.v0` (see [`docs/theta-v0.md`](docs/theta-v0.md)).
-- **C2:** every evidence export path (JSONL run rows, arm `#` meta, **CSV** via `schemaVersion`+`thetaJson`) carries complete ThetaV0; `assertExportHasFullTheta` fail-closes. **Next: C3.** Still observational ≠ closure; **M6 HARD-GATED**. See [`docs/navigation-plan.md`](docs/navigation-plan.md).
+- **C2 landed @ `2f45281`:** full ThetaV0 + `schemaVersion` on **all** evidence exports (CSV + JSONL fail-closed via `assertExportHasFullTheta`). **Next: C3** = M2 ladder-factor sweeps only (condition/controller/org/α/schedule). Still observational ≠ closure; **M6 HARD-GATED**. See [`docs/navigation-plan.md`](docs/navigation-plan.md).
 
 ## Docs
 
@@ -83,7 +83,7 @@ hypotheses — not claims about persistent patterns.
 |-----|------|
 | [`docs/research-roadmap.md`](docs/research-roadmap.md) | North-star research sequence, gates, metrics |
 | [`docs/navigation-plan.md`](docs/navigation-plan.md) | Anti-drift navigation + assignment stamp |
-| [`docs/theta-v0.md`](docs/theta-v0.md) | ThetaV0 characterization stamp (C1) |
+| [`docs/theta-v0.md`](docs/theta-v0.md) | ThetaV0 characterization stamp (C1+C2) |
 | [`docs/evidence/`](docs/evidence/) | How to reproduce the observational evidence ladder |
 
 Repo: `xepoctpat/homeosys` · work on `main` · no PRs by default · `prism` / `prism-clean` locked.
