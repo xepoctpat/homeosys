@@ -176,10 +176,10 @@ const TABS: { id: TabId; label: string }[] = [
 ];
 
 const PAINT_HINT: Record<PaintMode, string> = {
-  life: "Draw living cells onto the field.",
+  life: "Draw active cells onto the field.",
   erase: "Wipe cells back to empty ground.",
   regulator: "Plant a cell that holds order around it.",
-  energy: "Feed the soil so nearby life can last.",
+  energy: "Feed the soil so nearby cells can persist.",
 };
 
 
@@ -429,8 +429,8 @@ export function ControlPanel(props: ControlPanelProps) {
               ) : null}
             </div>
             <ToggleRow
-              label="Climate shapes survival"
-              description="Heat, energy, and season decide who lives."
+              label="Climate shapes occupancy"
+              description="Heat, energy, and season decide which cells stay active."
               checked={settings.environment}
               onCheckedChange={(v) => onSettings({ environment: v })}
             />
@@ -493,7 +493,7 @@ export function ControlPanel(props: ControlPanelProps) {
             <Row
               label="Metabolic heat"
               value={settings.metabolicHeat.toFixed(2)}
-              hint="How much living cells warm their neighbors."
+              hint="How much active cells warm their neighbors."
             >
               <RangeInput
                 min={0}
