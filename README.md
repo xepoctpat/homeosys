@@ -65,6 +65,12 @@ hypotheses — not claims about persistent patterns.
 - Write-guard @ `63fa427`: `npm run evidence` defaults to `evidence/_smoke/`
   (gitignored) or refuses committed paths; pass `--write` to refresh canonical
   `evidence/{m2..m5}`
+- **Evidence-harden A–D tip @ `4d8f43c`** (still observational; ≠ closure):
+  - **A** — env-no-control study condition + `m2-env-no-control` arm (`38b6374`)
+  - **B** — protocol-calibrated observational **K** from unregulated M2 densities
+    (`4fb9892`; not viability closure)
+  - **C** — dual grids `48×36` / `72×54` + fixed **20** explicit seeds (`1412a5e`)
+  - **D** — `m5-coord-ablated` (Coordinated α=0 coupling ablation) (`4d8f43c`)
 - **Observational evidence ≠ scientific closure of M2–M5**
 - **M6 remains hard-gated**
 

@@ -13,17 +13,17 @@
 - Exploratory play ≠ controlled evidence (need locked seed, K, schedule).
 - StudyConditionPack must not redefine world/disturbance; World must not redefine loops.
 - **Current experimental target stamp:** Steps **1–2** until evidence moves it.
-- **Engineering stamp (observational):** eng through **M5 organization scaffolding** is present; **evidence ladder M2–M5 shipped** with Reviewer **CONDITIONAL PASS** @ `0ac0d88` (`npm run evidence`, `evidence/m2`…`m5`, fixed `EVIDENCE_SEED_KEYS`, N=10). **Evidence-first work is in progress** — eng scaffolding ≠ scientific closure; Steps 3–5 / M2–M5 remain observational. **M6 hard-gated**. **Write guard:** smoke defaults to `evidence/_smoke/` or refuses committed paths; `--write` for canonical `evidence/{m2..m5}` (P3 PASS @ `63fa427`).
+- **Engineering stamp (observational):** eng through **M5 organization scaffolding** is present; **evidence ladder M2–M5 shipped** with Reviewer **CONDITIONAL PASS** @ `0ac0d88` (`npm run evidence`, `evidence/m2`…`m5`). **Evidence-harden A–D tip @ `4d8f43c`:** A env-no-control + m2 arm; B calibrated observational K; C dual grid 48×36/72×54 + 20 explicit seeds; D `m5-coord-ablated`. Fixed `EVIDENCE_SEED_KEYS` (N=20). **Evidence-first work is in progress** — eng scaffolding ≠ scientific closure; Steps 3–5 / M2–M5 remain observational. **M6 hard-gated**. **Write guard:** smoke defaults to `evidence/_smoke/` or refuses committed paths; `--write` for canonical `evidence/{m2..m5}` (P3 PASS @ `63fa427`). Occupancy/CA UI language; Game of Life is not a product brand.
 
 ## Long-horizon milestones
 
 | ID | Focus | Exit (summary) |
 |----|--------|----------------|
 | M1 | Validation/baseline | Deterministic replay + seeded B3/S23; fixed-rule no-env protocol used (partially shipped: Study packs + seedKey `503b05d`) |
-| M2 | Homeostasis | Baseline vs env-no-control vs feedback; **K predeclared**; time-in-K / recovery **distributions** |
+| M2 | Homeostasis | Baseline vs env-no-control vs feedback; **K predeclared** (protocol-calibrated observational bounds from unregulated arms — not closure); time-in-K / recovery **distributions**; observational arms include `m2-env-no-control` |
 | M3 | Ultrastability | Nonstationary schedule; episode log (rule changes, failed trials, mortality, stable-episode length) vs M2 |
 | M4 | Setpoint vs viability | Density-error vs safe-interval; same disturbance family (controller modes shipped `56e3730`; observational multi-seed exports via evidence ladder — not a closed claim) |
-| M5 | Hierarchy/autonomy | Central vs local vs coordinated; intervention/delay/bandwidth/ablation; VSM = hypothesis only — **eng scaffolding + observational multi-seed exports shipped; ablation / scientific completion still open** |
+| M5 | Hierarchy/autonomy | Central vs local vs coordinated; intervention/delay/bandwidth/ablation; VSM = hypothesis only — **eng scaffolding + observational multi-seed exports shipped; `m5-coord-ablated` (α=0) observational arm present; scientific completion still open** |
 | M6 | Autopoiesis | **Gated** — after M1–M5; needs component + resource + boundary state; operational closure criteria predeclared |
 | M7 | Complex adaptive | **Gated after M5 metrics** — may run parallel to gated M6; autopoiesis not a prerequisite; predeclared CAS observables; no single power-law “criticality” |
 
@@ -35,7 +35,7 @@
 4. **ResearchMode** shell (lock seed+condition+schedule, N repeats, export, replay) — keep exploratory default — **done** `00e1dc9`
 5. **M4 controller modes** (SetpointError vs ViabilityBand) — **done** `56e3730` (modes only; not a closed evidence claim)
 6. **M5 eng scaffolding** (Central/Local/Coordinated + interventionRate) — shipped on research track; **not** a closed evidence claim
-7. **Evidence ladder M2–M5** — observational exports shipped @ `0ac0d88` (CONDITIONAL PASS); **≠ scientific closure**. Evidence-first analysis in progress. **Write guard shipped** @ `63fa427` (smoke → `_smoke` / refuse; `--write` for canonical). Next eng: optional ablation polish or M6 gate prep — **do not start M6 autopoiesis**
+7. **Evidence ladder M2–M5** — observational exports shipped @ `0ac0d88` (CONDITIONAL PASS); **≠ scientific closure**. **Evidence-harden A–D tip @ `4d8f43c`** (env-no-control arm, calibrated observational K, dual grids + 20 seeds, `m5-coord-ablated`). Evidence-first analysis in progress. **Write guard shipped** @ `63fa427` (smoke → `_smoke` / refuse; `--write` for canonical). Next: analysis / optional further ablations — **do not start M6 autopoiesis**
 
 ## Component ownership (Architect)
 
@@ -68,8 +68,10 @@ E. Stamp current target Steps 1–2 — applied
 | 2026-09-25 | Editor | Must-fix / residual life–framing UI copy | Done `600ebad`, `de9e52d` |
 | 2026-09-25 | Reviewer | Conditional passes on copy + ResearchMode / M4 slices | Noted (engineering present; observational evidence ladder now exported) |
 | 2026-09-25 | Developer | M5 hierarchy thin slice (modes/metrics/ResearchMode A/B/C) | Eng scaffolding done on research track; scientific completion still open |
-| 2026-09-25 | Developer | Evidence ladder M2–M5 (`evidence-matrix` + `npm run evidence`) | Observational N=10 exports shipped; eng ≠ scientific closure; M6 gated |
+| 2026-09-25 | Developer | Evidence ladder M2–M5 (`evidence-matrix` + `npm run evidence`) | Observational exports shipped (now N=20 seeds + dual grids @ `4d8f43c` tip); eng ≠ scientific closure; M6 gated |
 | 2026-09-25 | Reviewer | Evidence ladder M2–M5 CONDITIONAL PASS | Noted @ `0ac0d88` (observational only; ≠ scientific closure; M6 gated) |
 | 2026-09-25 | Editor | Evidence README + navigation stamp polish | Assigned → Done (this commit) |
 | 2026-09-25 | Developer | Harden P3 smoke write-guard (`evidence/_smoke` default; `--write` for canonical) | Done `63fa427` |
 | 2026-09-25 | Editor | Drop stale smoke-rewrites-evidence bullets; align READMEs with write-guard | Done (this commit) |
+| 2026-09-25 | Developer | Evidence-harden A–D (env-no-control, calibrated K, dual grids+20 seeds, m5-coord-ablated) | Done tip `4d8f43c` (observational ≠ closure) |
+| 2026-09-25 | Editor | README + nav checkpoint after evidence-harden A–D | Done (this commit) |
