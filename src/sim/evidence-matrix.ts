@@ -330,7 +330,7 @@ export function armProtocolMeta(armResult: EvidenceArmResult): EvidenceProtocolM
     protocol: armResult.arm.protocolTemplate,
     notes: [
       "Observational only — eng scaffolding ≠ scientific closure.",
-      "Provisional K unchanged (densityMin/Max from DEFAULT_SETTINGS / PROVISIONAL_K).",
+      "Protocol-calibrated observational K (densityMin/Max from PROTOCOL_CALIBRATED_K; unregulated M2 baseline+envNoControl percentiles).",
       "No life / autopoiesis / cognition claims.",
       "UltraEpisodeLog aggregates appear on each run summary when present.",
     ],

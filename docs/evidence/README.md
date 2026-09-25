@@ -14,8 +14,11 @@ scientific closure of M2–M5.
   M2–M5 (or Steps 3–5) as scientific claims. Prefer distributions and
   predeclared metrics over cherry-picked trajectories.
 - **M6 remains hard-gated.** Do not add autopoiesis engineering or claims here.
-- **Provisional K** (`PROVISIONAL_K` / `densityMin`–`densityMax`) is unchanged.
-  Bounds are lab defaults, not calibrated.
+- **Protocol-calibrated observational K** (`PROTOCOL_CALIBRATED_K` / `densityMin`–`densityMax`):
+  frozen bounds from M2 **baseline + envNoControl** per-generation density
+  distributions (positive densities only; p05/p95 → floor/ceil 3dp →
+  `[0.016, 0.221]`). Homeostatic/ultrastable arms were **not** used to set
+  bounds. See `src/sim/calibrated-k.ts`. **Not** scientific closure of viability.
 - **No life / cognition / consciousness claims.** Pattern persistence ≠ organism.
   User-facing copy must not market “Game of Life”; technical prose may name
   Conway’s Game of Life only as the cellular-automaton **substrate algorithm**.

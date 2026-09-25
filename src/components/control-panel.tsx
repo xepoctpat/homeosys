@@ -767,8 +767,9 @@ export function ControlPanel(props: ControlPanelProps) {
               <div className="text-sm text-fg">Controller mode</div>
               <p className="text-xs leading-relaxed text-subtle">
                 SetpointError minimizes |density − setpoint|. ViabilityBand acts only
-                near/outside provisional K and tolerates drift inside the band. Observational
-                A/B factor — not a claim about life or autopoiesis.
+                near/outside protocol-calibrated K and tolerates drift inside the band.
+                Observational A/B factor — protocol-calibrated K is not scientific closure
+                of viability, life, or autopoiesis.
               </p>
               <div className="flex flex-wrap gap-2">
                 {CONTROLLER_MODES.map((mode) => {

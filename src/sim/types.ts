@@ -1,3 +1,4 @@
+import { PROTOCOL_CALIBRATED_K } from "./calibrated-k.ts";
 export type PaintMode = "life" | "erase" | "regulator" | "energy";
 
 export type PresetId =
@@ -30,20 +31,25 @@ export interface LoopFlag {
   note: string;
 }
 
-/** Provisional viable region K for essential variable density.
- * Explicit lab defaults — not calibrated and not derived from the homeostasis setpoint.
- * meanEnergy floor is intentionally omitted to keep K a single clean density interval.
+/** Viable region K for essential variable density.
+ * Protocol-calibrated observational bounds — see PROTOCOL_CALIBRATED_K / calibrated-k.ts.
+ * Not derived from the homeostasis setpoint. meanEnergy floor omitted (density interval only).
  */
 export interface ViableRegion {
   densityMin: number;
   densityMax: number;
 }
 
-/** Conservative arbitrary density interval for labs. Labeled provisional everywhere it surfaces. */
+/**
+ * Alias of PROTOCOL_CALIBRATED_K (protocol-calibrated observational).
+ * Prefer PROTOCOL_CALIBRATED_K in new code; name retained for older references.
+ */
 export const PROVISIONAL_K: ViableRegion = {
-  densityMin: 0.02,
-  densityMax: 0.4,
+  densityMin: PROTOCOL_CALIBRATED_K.densityMin,
+  densityMax: PROTOCOL_CALIBRATED_K.densityMax,
 };
+
+export { PROTOCOL_CALIBRATED_K, K_CALIBRATION_META, K_CALIBRATION_METHOD } from "./calibrated-k.ts";
 
 /** Named disturbance schedule id — world/disturbance layer, never a loop flag. */
 export type DisturbanceScheduleId = "none" | "pulse" | "sustained";
@@ -51,7 +57,7 @@ export type DisturbanceScheduleId = "none" | "pulse" | "sustained";
 /**
  * Controller / policy mode for the fast homeostasis loop (M4).
  * SetpointError: minimize |density − setpoint| (legacy density-error behavior).
- * ViabilityBand: act only near/outside provisional K [densityMin, densityMax]; tolerate drift inside K.
+ * ViabilityBand: act only near/outside protocol-calibrated K [densityMin, densityMax]; tolerate drift inside K.
  */
 export type ControllerMode = "SetpointError" | "ViabilityBand";
 
@@ -68,7 +74,7 @@ export const CONTROLLER_MODES: {
   {
     id: "ViabilityBand",
     label: "ViabilityBand",
-    blurb: "Act only near/outside provisional K; tolerate drift inside the band.",
+    blurb: "Act only near/outside protocol-calibrated K; tolerate drift inside the band.",
   },
 ];
 

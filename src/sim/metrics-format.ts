@@ -55,7 +55,7 @@ export function buildMetricCells(
         label: "Outside Σ",
         value: "—",
         hideOnSmall: true,
-        title: "Cumulative density distance outside provisional K",
+        title: "Cumulative density distance outside protocol-calibrated K",
       },
       {
         label: "Recoveries",
@@ -67,7 +67,7 @@ export function buildMetricCells(
         label: "K dens",
         value: "—",
         hideOnSmall: true,
-        title: "Provisional K density interval (not calibrated)",
+        title: "Protocol-calibrated observational K density interval (not scientific closure)",
       },
       { label: "Viability", value: "—" },
       { label: "Setpoint", value: "—", hideOnSmall: true },
@@ -149,7 +149,7 @@ export function buildMetricCells(
     Number.isFinite(dMin) &&
     typeof dMax === "number" &&
     Number.isFinite(dMax)
-      ? `${(dMin * 100).toFixed(0)}–${(dMax * 100).toFixed(0)}% provisional`
+      ? `${(dMin * 100).toFixed(0)}–${(dMax * 100).toFixed(0)}% protocol-K`
       : "—";
 
   const inKVal =
@@ -170,7 +170,7 @@ export function buildMetricCells(
       label: "Outside Σ",
       value: fixed(metrics.cumulativeDistanceOutsideK, 3),
       hideOnSmall: true,
-      title: "Cumulative density distance outside provisional K",
+      title: "Cumulative density distance outside protocol-calibrated K",
     },
     {
       label: "Recoveries",
@@ -182,7 +182,7 @@ export function buildMetricCells(
       label: "K dens",
       value: kDens,
       hideOnSmall: true,
-      title: "Provisional K density interval (not calibrated)",
+      title: "Protocol-calibrated observational K density interval (not scientific closure)",
     },
     { label: "Viability", value: fixed(metrics.viability, 2) },
     { label: "Setpoint", value: pct(metrics.setpoint), hideOnSmall: true },

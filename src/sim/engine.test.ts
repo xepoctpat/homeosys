@@ -5,6 +5,8 @@ import { SimEngine, computeDisturbanceW } from "./engine.ts";
 import {
   DEFAULT_SETTINGS,
   STUDY_CONDITIONS,
+  PROTOCOL_CALIBRATED_K,
+  PROVISIONAL_K,
   type DisturbanceSchedule,
   type SimSettings,
 } from "./types.ts";
@@ -302,9 +304,13 @@ test("same seedKey and settings yield identical inK series and aggregators", () 
   assert.equal(a.lastEnterGeneration, b.lastEnterGeneration);
 });
 
-test("PROVISIONAL_K defaults are explicit and not tied to setpoint", () => {
-  assert.equal(DEFAULT_SETTINGS.densityMin, 0.02);
-  assert.equal(DEFAULT_SETTINGS.densityMax, 0.4);
+test("protocol-calibrated K defaults are explicit and not tied to setpoint", () => {
+  assert.equal(PROTOCOL_CALIBRATED_K.densityMin, 0.016);
+  assert.equal(PROTOCOL_CALIBRATED_K.densityMax, 0.221);
+  assert.equal(PROVISIONAL_K.densityMin, PROTOCOL_CALIBRATED_K.densityMin);
+  assert.equal(PROVISIONAL_K.densityMax, PROTOCOL_CALIBRATED_K.densityMax);
+  assert.equal(DEFAULT_SETTINGS.densityMin, PROTOCOL_CALIBRATED_K.densityMin);
+  assert.equal(DEFAULT_SETTINGS.densityMax, PROTOCOL_CALIBRATED_K.densityMax);
   assert.notEqual(DEFAULT_SETTINGS.densityMin, DEFAULT_SETTINGS.setpoint);
   assert.notEqual(DEFAULT_SETTINGS.densityMax, DEFAULT_SETTINGS.setpoint);
   // Study packs must not redefine K — they remain loop/env packs only.
