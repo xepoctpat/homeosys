@@ -13,7 +13,7 @@ import {
   abcOrganizationProtocols,
   exportCsv,
   exportJsonl,
-  runOne,
+  runBatch,
   validateProtocol,
   type EngineFactory,
   type ResearchProtocol,
@@ -262,16 +262,17 @@ export function runEvidenceArm(
   const seedKeys = resolveSeedKeys(n);
   const results: ResearchRunSummary[] = [];
   for (let i = 0; i < seedKeys.length; i++) {
+    // runBatch validates + runs repeats; we lock repeats=1 and vary seedKey
+    // from the fixed EVIDENCE_SEED_KEYS list (multi-seed, not same-seed repeats).
     const protocol: ResearchProtocol = {
       ...arm.protocolTemplate,
       seedKey: seedKeys[i],
       repeats: 1,
     };
-    results.push(
-      runOne(protocol, i, options.engineFactory, {
-        collectSeries: options.collectSeries ?? false,
-      }),
-    );
+    const [row] = runBatch(protocol, options.engineFactory, {
+      collectSeries: options.collectSeries ?? false,
+    });
+    results.push({ ...row, runIndex: i });
   }
   return { arm, seedKeys, results };
 }
