@@ -8,7 +8,7 @@ scientific closure of M2–M5.
 
 ## Critical caveats
 
-**Write guard:** `npm run evidence` / smoke defaults to `evidence/_smoke/` (gitignored); use `--write` (or `--commit-artifacts`) to refresh committed `evidence/{m2..m5}`.
+**Write guard (P3 PASS @ `63fa427`):** `npm run evidence` / smoke defaults to `evidence/_smoke/` (gitignored) or refuses committed paths; use `--write` (or `--commit-artifacts`) to refresh canonical `evidence/{m2..m5}`.
 
 - **Engineering scaffolding ≠ scientific closure.** These arms do **not** close
   M2–M5 (or Steps 3–5) as scientific claims. Prefer distributions and

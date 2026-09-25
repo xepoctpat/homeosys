@@ -13,7 +13,7 @@
 - Exploratory play ≠ controlled evidence (need locked seed, K, schedule).
 - StudyConditionPack must not redefine world/disturbance; World must not redefine loops.
 - **Current experimental target stamp:** Steps **1–2** until evidence moves it.
-- **Engineering stamp (observational):** eng through **M5 organization scaffolding** is present; **evidence ladder M2–M5 shipped** with Reviewer **CONDITIONAL PASS** @ `0ac0d88` (`npm run evidence`, `evidence/m2`…`m5`, fixed `EVIDENCE_SEED_KEYS`, N=10). **Evidence-first work is in progress** — eng scaffolding ≠ scientific closure; Steps 3–5 / M2–M5 remain observational. **M6 hard-gated**. **P3 smoke can rewrite `evidence/`** (Developer fixing).
+- **Engineering stamp (observational):** eng through **M5 organization scaffolding** is present; **evidence ladder M2–M5 shipped** with Reviewer **CONDITIONAL PASS** @ `0ac0d88` (`npm run evidence`, `evidence/m2`…`m5`, fixed `EVIDENCE_SEED_KEYS`, N=10). **Evidence-first work is in progress** — eng scaffolding ≠ scientific closure; Steps 3–5 / M2–M5 remain observational. **M6 hard-gated**. **Write guard:** smoke defaults to `evidence/_smoke/` or refuses committed paths; `--write` for canonical `evidence/{m2..m5}` (P3 PASS @ `63fa427`).
 
 ## Long-horizon milestones
 
@@ -35,7 +35,7 @@
 4. **ResearchMode** shell (lock seed+condition+schedule, N repeats, export, replay) — keep exploratory default — **done** `00e1dc9`
 5. **M4 controller modes** (SetpointError vs ViabilityBand) — **done** `56e3730` (modes only; not a closed evidence claim)
 6. **M5 eng scaffolding** (Central/Local/Coordinated + interventionRate) — shipped on research track; **not** a closed evidence claim
-7. **Evidence ladder M2–M5** — observational exports shipped @ `0ac0d88` (CONDITIONAL PASS); **≠ scientific closure**. Evidence-first analysis in progress. **P3 smoke can rewrite `evidence/`** (Developer fixing). Next eng: optional ablation polish or M6 gate prep — **do not start M6 autopoiesis**
+7. **Evidence ladder M2–M5** — observational exports shipped @ `0ac0d88` (CONDITIONAL PASS); **≠ scientific closure**. Evidence-first analysis in progress. **Write guard shipped** @ `63fa427` (smoke → `_smoke` / refuse; `--write` for canonical). Next eng: optional ablation polish or M6 gate prep — **do not start M6 autopoiesis**
 
 ## Component ownership (Architect)
 
@@ -71,4 +71,5 @@ E. Stamp current target Steps 1–2 — applied
 | 2026-09-25 | Developer | Evidence ladder M2–M5 (`evidence-matrix` + `npm run evidence`) | Observational N=10 exports shipped; eng ≠ scientific closure; M6 gated |
 | 2026-09-25 | Reviewer | Evidence ladder M2–M5 CONDITIONAL PASS | Noted @ `0ac0d88` (observational only; ≠ scientific closure; M6 gated) |
 | 2026-09-25 | Editor | Evidence README + navigation stamp polish | Assigned → Done (this commit) |
-| 2026-09-25 | Developer | Harden P3 smoke so it cannot silently rewrite `evidence/` | In flight |
+| 2026-09-25 | Developer | Harden P3 smoke write-guard (`evidence/_smoke` default; `--write` for canonical) | Done `63fa427` |
+| 2026-09-25 | Editor | Drop stale smoke-rewrites-evidence bullets; align READMEs with write-guard | Done (this commit) |
