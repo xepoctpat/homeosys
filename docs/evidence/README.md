@@ -1,5 +1,3 @@
-Subpaths under `evidence/` (e.g. `evidence/m2`) also require `--write`; only `evidence/_smoke` is writable without it.
-
 # Evidence ladder (M2–M5)
 
 Headless **observational** batches for the Homeosys measured-control ladder.
@@ -10,7 +8,7 @@ scientific closure of M2–M5.
 
 ## Critical caveats
 
-**Write guard (P3 PASS @ `63fa427`):** `npm run evidence` / smoke defaults to `evidence/_smoke/` (gitignored) or refuses committed paths; use `--write` (or `--commit-artifacts`) to refresh canonical `evidence/{m2..m5}`.
+**Write guard (P3 PASS tip @ `9f8c290`; initial @ `63fa427`):** `npm run evidence` / smoke defaults to `evidence/_smoke/` (gitignored). **Subpath refuse:** `--out` under committed `evidence/{m2..m5}` (e.g. `evidence/m2`) requires `--write`; only `evidence/_smoke` is writable without it. Use `--write` (or `--commit-artifacts`) to refresh canonical `evidence/{m2..m5}`.
 
 - **Engineering scaffolding ≠ scientific closure.** These arms do **not** close
   M2–M5 (or Steps 3–5) as scientific claims. Prefer distributions and

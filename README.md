@@ -62,9 +62,9 @@ hypotheses — not claims about persistent patterns.
 **Evidence ladder (observational):**
 
 - Ladder exports associated with Reviewer pass track @ `0ac0d88`
-- Write-guard @ `63fa427`: `npm run evidence` defaults to `evidence/_smoke/`
-  (gitignored) or refuses committed paths; pass `--write` to refresh canonical
-  `evidence/{m2..m5}`
+- Write-guard tip @ `9f8c290` (initial @ `63fa427`): `npm run evidence` defaults
+  to `evidence/_smoke/` (gitignored); **subpath refuse** for committed
+  `evidence/{m2..m5}` without `--write`; pass `--write` to refresh canonical
 - **Evidence-harden A–D tip @ `4d8f43c`** (still observational; ≠ closure):
   - **A** — env-no-control study condition + `m2-env-no-control` arm (`38b6374`)
   - **B** — protocol-calibrated observational **K** from unregulated M2 densities

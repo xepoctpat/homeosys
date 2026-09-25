@@ -13,7 +13,7 @@
 - Exploratory play ≠ controlled evidence (need locked seed, K, schedule).
 - StudyConditionPack must not redefine world/disturbance; World must not redefine loops.
 - **Current experimental target stamp:** Steps **1–2** until evidence moves it.
-- **Engineering stamp (observational):** eng through **M5 organization scaffolding** is present; **evidence ladder M2–M5 shipped** with Reviewer **CONDITIONAL PASS** @ `0ac0d88` (`npm run evidence`, `evidence/m2`…`m5`). **Evidence-harden A–D tip @ `4d8f43c`:** A env-no-control + m2 arm; B calibrated observational K; C dual grid 48×36/72×54 + 20 explicit seeds; D `m5-coord-ablated`. Fixed `EVIDENCE_SEED_KEYS` (N=20). **Evidence-first work is in progress** — eng scaffolding ≠ scientific closure; Steps 3–5 / M2–M5 remain observational. **M6 hard-gated**. **Write guard:** smoke defaults to `evidence/_smoke/` or refuses committed paths; `--write` for canonical `evidence/{m2..m5}` (P3 PASS @ `63fa427`). Occupancy/CA UI language; Game of Life is not a product brand.
+- **Engineering stamp (observational):** eng through **M5 organization scaffolding** is present; **evidence ladder M2–M5 shipped** with Reviewer **CONDITIONAL PASS** @ `0ac0d88` (`npm run evidence`, `evidence/m2`…`m5`). **Evidence-harden A–D tip @ `4d8f43c`:** A env-no-control + m2 arm; B calibrated observational K; C dual grid 48×36/72×54 + 20 explicit seeds; D `m5-coord-ablated`. Fixed `EVIDENCE_SEED_KEYS` (N=20). **Evidence-first work is in progress** — eng scaffolding ≠ scientific closure; Steps 3–5 / M2–M5 remain observational. **M6 hard-gated**. **Write guard:** smoke defaults to `evidence/_smoke/` (gitignored); **subpath refuse** under `evidence/{m2..m5}` without `--write` (P3 PASS tip @ `9f8c290`; initial guard @ `63fa427`). Occupancy/CA UI language; Game of Life is not a product brand.
 
 ## Long-horizon milestones
 
@@ -35,7 +35,7 @@
 4. **ResearchMode** shell (lock seed+condition+schedule, N repeats, export, replay) — keep exploratory default — **done** `00e1dc9`
 5. **M4 controller modes** (SetpointError vs ViabilityBand) — **done** `56e3730` (modes only; not a closed evidence claim)
 6. **M5 eng scaffolding** (Central/Local/Coordinated + interventionRate) — shipped on research track; **not** a closed evidence claim
-7. **Evidence ladder M2–M5** — observational exports shipped @ `0ac0d88` (CONDITIONAL PASS); **≠ scientific closure**. **Evidence-harden A–D tip @ `4d8f43c`** (env-no-control arm, calibrated observational K, dual grids + 20 seeds, `m5-coord-ablated`). Evidence-first analysis in progress. **Write guard shipped** @ `63fa427` (smoke → `_smoke` / refuse; `--write` for canonical). Next: analysis / optional further ablations — **do not start M6 autopoiesis**
+7. **Evidence ladder M2–M5** — observational exports shipped @ `0ac0d88` (CONDITIONAL PASS); **≠ scientific closure**. **Evidence-harden A–D tip @ `4d8f43c`** (env-no-control arm, calibrated observational K, dual grids + 20 seeds, `m5-coord-ablated`). **Write guard** smoke → `_smoke`; **subpath refuse** for committed `evidence/{m2..m5}` without `--write` (P3 PASS @ `9f8c290`; initial @ `63fa427`). Next when captain reopens: **characterization / analysis path** (not eng theater) — **do not start M6 autopoiesis**
 
 ## Component ownership (Architect)
 
@@ -74,4 +74,6 @@ E. Stamp current target Steps 1–2 — applied
 | 2026-09-25 | Developer | Harden P3 smoke write-guard (`evidence/_smoke` default; `--write` for canonical) | Done `63fa427` |
 | 2026-09-25 | Editor | Drop stale smoke-rewrites-evidence bullets; align READMEs with write-guard | Done (this commit) |
 | 2026-09-25 | Developer | Evidence-harden A–D (env-no-control, calibrated K, dual grids+20 seeds, m5-coord-ablated) | Done tip `4d8f43c` (observational ≠ closure) |
-| 2026-09-25 | Editor | README + nav checkpoint after evidence-harden A–D | Done (this commit) |
+| 2026-09-25 | Editor | README + nav checkpoint after evidence-harden A–D | Done `7a24ccf` |
+| 2026-09-25 | Developer | Harden write-guard for committed evidence subpaths | Done P3 PASS tip `9f8c290` |
+| 2026-09-25 | Editor | Nav/evidence stamp nit: cite subpath refuse @ `9f8c290` | Done (this commit) |
