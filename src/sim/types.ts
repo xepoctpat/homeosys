@@ -451,7 +451,7 @@ export const PRESETS: {
   {
     id: "dust",
     name: "Dust",
-    blurb: "Sparse. The observer has to restart life.",
+    blurb: "Sparse. The observer has to reseed activity.",
     settings: {
       environment: true,
       cybernetics: true,

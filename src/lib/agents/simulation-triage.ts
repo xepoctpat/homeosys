@@ -19,7 +19,7 @@ export function triageSimulation({ metrics }: SimulationAgentContext): AgentResu
         "critical",
         "collapse",
         "The field is close to collapse",
-        "Very little viable life remains, so the current rule and climate are not sustaining the field.",
+        "Very little active occupancy remains, so the current rule and climate are not sustaining the field.",
         "Reseed the current world or increase available energy.",
       ),
     );
@@ -53,7 +53,7 @@ export function triageSimulation({ metrics }: SimulationAgentContext): AgentResu
         "warning",
         "energy-low",
         "Energy reserves are low",
-        "Living cells are competing for a nearly exhausted substrate.",
+        "Active cells are competing for a nearly exhausted substrate.",
         "Increase available energy or pause to inspect the current climate.",
       ),
     );
