@@ -115,9 +115,11 @@ The primary outcome is not maximum population. It is the ability to remain in,
 or recover to, `K` under a declared disturbance schedule.
 
 
-### ThetaV0 stamp (C1)
+### ThetaV0 stamp (C1–C3)
 
-Locked runs and evidence exports carry a full **ThetaV0** object (`schemaVersion: "theta.v0"`) including env knobs, schedule, seed, and rule. See [`docs/theta-v0.md`](theta-v0.md). Observational ≠ closure; M6 gated.
+Locked runs and evidence exports carry a full **ThetaV0** object (`schemaVersion: "theta.v0"`) including env knobs, schedule, seed, and rule. See [`docs/theta-v0.md`](theta-v0.md).
+
+**C3 M2 ladder-factor sweep** expands only: studyCondition / controllerMode / organizationMode / coordCouplingAlpha∈{0,0.3} / schedule∈{none,pulse,sustained}. Continuous gains are not sweep axes. Observational ≠ closure; M6 gated; no E1 eng platform yet.
 
 ## Research sequence
 

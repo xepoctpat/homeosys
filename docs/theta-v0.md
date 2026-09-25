@@ -1,8 +1,8 @@
 # ThetaV0 (characterization lock)
 
-**Status:** C1+C2 landed. Observational scaffolding ≠ scientific closure. **M6 HARD-GATED.**
+**Status:** C1+C2+C3 landed. Observational scaffolding ≠ scientific closure. **M6 HARD-GATED.**
 
-ThetaV0 (`schemaVersion: "theta.v0"`) is the captain/Architect-frozen parameter stamp carried on every research lock and evidence export **before** any E1 sweep engine.
+ThetaV0 (`schemaVersion: "theta.v0"`) is the captain/Architect-frozen parameter stamp carried on every research lock and evidence export. C3 M2 ladder-factor sweeps reuse the same stamp; **E1 eng platform not started**.
 
 ## Formal model
 
@@ -32,8 +32,20 @@ K + run: `densityMin`, `densityMax` (default `PROTOCOL_CALIBRATED_K`), `generati
 - CSV rows carry `schemaVersion` + `thetaJson` (= `JSON.stringify(theta)`) so flat CSV keeps complete θ
 - `assertExportHasFullTheta` fail-closes exporters/tests if θ truncated or missing
 
-## Sweep policy (later — C3/E1, not C2)
+## Sweep policy (C3 landed — M2 ladder factors only)
 
-First sweep axes = **ladder factors only**: condition / controller / org / α / schedule. Continuous gains are recorded in θ for completeness but are **not** first-axis knobs. No multi-system / meta-dynamics / UI theater.
+**C3** = M2-scoped characterization sweep over **ladder factors ONLY** (`src/sim/m2-ladder-sweep.ts`):
 
-Architect may refine the field table; any delta lands as an explicit follow-up, not a silent omission of env knobs or `schemaVersion`.
+| Axis | Discrete levels |
+|------|-----------------|
+| `studyCondition` | `baseline` \| `envNoControl` \| `homeostatic` (M2-first; ultrastable stays M3) |
+| `controllerMode` | `SetpointError` \| `ViabilityBand` |
+| `organizationMode` | `Central` \| `Local` \| `Coordinated` |
+| `coordCouplingAlpha` | `{0, 0.3}` only (meaningful when Coordinated; α-sweep forces Coordinated) |
+| `schedule` | named ids `none` \| `pulse` \| `sustained` (not a continuous float grid) |
+
+Continuous gains (`homeoGain`, `climate`, `seasonRate`, `noise`, …) are **refused** as sweep axes (`assertM2SweepSpec` / `isAllowedM2SweepAxis`) — still stamped in ThetaV0 for completeness. Default smoke expands `studyCondition` only; full matrix via `--sweep-axes` / `expandAxes`. CLI: `npm run evidence -- --sweep-m2` → `evidence/_smoke/m2-sweep/` (write-guard unchanged).
+
+**Observational ≠ scientific closure. M6 HARD-GATED. No E1 eng platform / multi-system / UI theater.**
+
+Architect may refine the field table; any delta lands as an explicit follow-up, not a silent omission of env knobs or `schemaVersion`. Soft nit deferred: nullish numeric θ coerce vs refuse.

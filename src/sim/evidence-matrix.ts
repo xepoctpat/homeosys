@@ -113,7 +113,7 @@ export type EvidenceArmId =
   | "m5-coord-ablated-72x54";
 
 export interface EvidenceArm {
-  id: EvidenceArmId;
+  id: string;
   milestone: EvidenceMilestone;
   label: string;
   /** Factor under observation (studyCondition / controller / organization). */
@@ -378,7 +378,7 @@ export function runEvidenceMatrix(
 
 export interface EvidenceProtocolMeta {
   milestone: EvidenceMilestone;
-  armId: EvidenceArmId;
+  armId: string;
   label: string;
   factor: string;
   seedStrategy: "fixed-seedKey-list";
