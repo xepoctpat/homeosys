@@ -24,6 +24,14 @@ function metrics(overrides: Partial<Metrics> = {}): Metrics {
     rule: "B3/S23",
     adaptations: 0,
     probing: false,
+    ultraProbeCount: 0,
+    ultraKeptCount: 0,
+    ultraRevertedCount: 0,
+    lastUltraOutcome: null,
+    lastUltraGeneration: null,
+    stableEpisodeLength: 12,
+    lastUltraMinPop: null,
+    lastUltraDeltaPop: null,
     seedKey: 1,
     loops: [],
     popHistory: [],
@@ -51,7 +59,7 @@ function metrics(overrides: Partial<Metrics> = {}): Metrics {
     shouldMeasure: false,
     limitReached: false,
     ...overrides,
-  };
+  } as Metrics;
 }
 
 test("registers the local triage agent and its skill", () => {

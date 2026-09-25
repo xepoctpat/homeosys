@@ -53,6 +53,30 @@ export function MetricsBar({ metrics, running }: { metrics: Metrics | null; runn
       hideOnSmall: true,
       title: "Current disturbance w(t)",
     },
+    {
+      label: "Ultra probes",
+      value: metrics ? fmt(metrics.ultraProbeCount) : "—",
+      hideOnSmall: true,
+      title: "Resolved ultrastability probe episodes since seed",
+    },
+    {
+      label: "Ultra kept",
+      value: metrics ? fmt(metrics.ultraKeptCount) : "—",
+      hideOnSmall: true,
+      title: "Probes whose candidate genome was kept",
+    },
+    {
+      label: "Ultra revert",
+      value: metrics ? fmt(metrics.ultraRevertedCount) : "—",
+      hideOnSmall: true,
+      title: "Probes whose candidate genome was reverted",
+    },
+    {
+      label: "Episode",
+      value: metrics ? fmt(metrics.stableEpisodeLength) : "—",
+      hideOnSmall: true,
+      title: "Generations since last probe resolution (or since seed if none)",
+    },
   ];
 
   return (

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { classicGenome } from "./genome.ts";
+import { classicGenome, cloneGenome, genomeToString, mutateGenome } from "./genome.ts";
 import { SimEngine, computeDisturbanceW } from "./engine.ts";
 import {
   DEFAULT_SETTINGS,
@@ -8,6 +8,7 @@ import {
   type DisturbanceSchedule,
   type SimSettings,
 } from "./types.ts";
+import { UltraEpisodeLog, ULTRA_EPISODE_LOG_CAP, createUltraEpisodeEvent } from "./ultra-episode-log.ts";
 
 function packSettings(id: "baseline" | "homeostatic" | "ultrastable"): SimSettings {
   const pack = STUDY_CONDITIONS.find((c) => c.id === id);
@@ -480,4 +481,248 @@ test("measurementInterval increments measureCount on expected generations", () =
   }
   assert.deepEqual(hits, [5, 10, 15, 20]);
   assert.equal(engine.snapshot().measureCount, 4);
+});
+
+/** Inject an in-flight ultra probe (bypasses stuck-detector) for keep/revert tests. */
+function injectUltraProbe(
+  engine: SimEngine,
+  baseline: number,
+  remaining = 36,
+): { genomeBefore: string; genomeAfterMutation: string } {
+  const internal = engine as unknown as {
+    probe: {
+      previous: ReturnType<typeof cloneGenome>;
+      remaining: number;
+      baseline: number;
+      acc: number;
+      samples: number;
+      startGeneration: number;
+      genomeBefore: string;
+      genomeAfterMutation: string;
+      popAtStart: number;
+      minPop: number;
+    } | null;
+    lastPop: number;
+    rand: () => number;
+  };
+  const genomeBefore = genomeToString(engine.genome);
+  const previous = cloneGenome(engine.genome);
+  engine.genome = mutateGenome(engine.genome, () => internal.rand());
+  const genomeAfterMutation = genomeToString(engine.genome);
+  internal.probe = {
+    previous,
+    remaining,
+    baseline,
+    acc: 0,
+    samples: 0,
+    startGeneration: engine.generation,
+    genomeBefore,
+    genomeAfterMutation,
+    popAtStart: internal.lastPop,
+    minPop: internal.lastPop,
+  };
+  return { genomeBefore, genomeAfterMutation };
+}
+
+test("UltraEpisodeLog aggregates, cap, and reset", () => {
+  const log = new UltraEpisodeLog();
+  assert.deepEqual(log.aggregates(10), {
+    ultraProbeCount: 0,
+    ultraKeptCount: 0,
+    ultraRevertedCount: 0,
+    lastUltraOutcome: null,
+    lastUltraGeneration: null,
+    stableEpisodeLength: 10,
+    lastUltraMinPop: null,
+    lastUltraDeltaPop: null,
+  });
+
+  log.append(
+    createUltraEpisodeEvent({
+      startGeneration: 2,
+      resolveGeneration: 5,
+      genomeBefore: "B3/S23",
+      genomeAfter: "B3/S234",
+      outcome: "kept",
+      baselineVia: 0.4,
+      probeMeanVia: 0.5,
+      popAtStart: 100,
+      minPopDuringProbe: 80,
+      popAtEnd: 90,
+    }),
+  );
+  log.append(
+    createUltraEpisodeEvent({
+      startGeneration: 8,
+      resolveGeneration: 12,
+      genomeBefore: "B3/S234",
+      genomeAfter: "B3/S23",
+      outcome: "reverted",
+      baselineVia: 0.9,
+      probeMeanVia: 0.2,
+      popAtStart: 90,
+      minPopDuringProbe: 40,
+      popAtEnd: 50,
+    }),
+  );
+
+  const agg = log.aggregates(20);
+  assert.equal(agg.ultraProbeCount, 2);
+  assert.equal(agg.ultraKeptCount, 1);
+  assert.equal(agg.ultraRevertedCount, 1);
+  assert.equal(agg.lastUltraOutcome, "reverted");
+  assert.equal(agg.lastUltraGeneration, 12);
+  assert.equal(agg.stableEpisodeLength, 8);
+  assert.equal(agg.lastUltraMinPop, 40);
+  assert.equal(agg.lastUltraDeltaPop, -40);
+
+  for (let i = 0; i < ULTRA_EPISODE_LOG_CAP + 5; i++) {
+    log.append(
+      createUltraEpisodeEvent({
+        startGeneration: i,
+        resolveGeneration: i,
+        genomeBefore: "B3/S23",
+        genomeAfter: "B3/S23",
+        outcome: i % 2 === 0 ? "kept" : "reverted",
+        baselineVia: 0,
+        probeMeanVia: 0,
+        popAtStart: 0,
+        minPopDuringProbe: 0,
+        popAtEnd: 0,
+      }),
+    );
+  }
+  assert.equal(log.list().length, ULTRA_EPISODE_LOG_CAP);
+
+  log.reset();
+  assert.equal(log.list().length, 0);
+  assert.equal(log.aggregates(3).stableEpisodeLength, 3);
+});
+
+test("ultra probe keep and revert log events and metrics", () => {
+  const settings: SimSettings = {
+    ...packSettings("ultrastable"),
+    environment: false,
+    varietyEnabled: false,
+    autoEnabled: false,
+    observerEnabled: false,
+    homeoGain: 0,
+  };
+
+  // Keep: absurdly low baseline so mean+0.02 always passes.
+  {
+    const engine = new SimEngine();
+    engine.allocate(24, 24);
+    engine.applySettings(settings);
+    engine.seed("classic", 0x01111101);
+    const startGen = engine.generation;
+    const { genomeBefore, genomeAfterMutation } = injectUltraProbe(engine, 0);
+    for (let i = 0; i < 36; i++) engine.step();
+    const snap = engine.snapshot();
+    const events = engine.ultraEpisodeEvents();
+    assert.equal(events.length, 1);
+    assert.equal(events[0].outcome, "kept");
+    assert.equal(events[0].genomeBefore, genomeBefore);
+    assert.equal(events[0].genomeAfter, genomeAfterMutation);
+    assert.equal(events[0].startGeneration, startGen);
+    assert.equal(snap.ultraProbeCount, 1);
+    assert.equal(snap.ultraKeptCount, 1);
+    assert.equal(snap.ultraRevertedCount, 0);
+    assert.equal(snap.lastUltraOutcome, "kept");
+    assert.equal(snap.adaptations, 1);
+    assert.equal(snap.probing, false);
+    assert.equal(genomeToString(engine.genome), genomeAfterMutation);
+  }
+
+  // Revert: absurdly high baseline so mean+0.02 always fails.
+  {
+    const engine = new SimEngine();
+    engine.allocate(24, 24);
+    engine.applySettings(settings);
+    engine.seed("classic", 0x01111102);
+    const { genomeBefore, genomeAfterMutation } = injectUltraProbe(engine, 999);
+    for (let i = 0; i < 36; i++) engine.step();
+    const snap = engine.snapshot();
+    const events = engine.ultraEpisodeEvents();
+    assert.equal(events.length, 1);
+    assert.equal(events[0].outcome, "reverted");
+    assert.equal(events[0].genomeBefore, genomeBefore);
+    assert.equal(events[0].genomeAfter, genomeBefore);
+    assert.notEqual(genomeAfterMutation, genomeBefore);
+    assert.equal(snap.ultraProbeCount, 1);
+    assert.equal(snap.ultraKeptCount, 0);
+    assert.equal(snap.ultraRevertedCount, 1);
+    assert.equal(snap.lastUltraOutcome, "reverted");
+    assert.equal(snap.adaptations, 0);
+    assert.equal(genomeToString(engine.genome), genomeBefore);
+  }
+});
+
+test("reseed clears ultra episode log and counters", () => {
+  const settings: SimSettings = {
+    ...packSettings("ultrastable"),
+    environment: false,
+    varietyEnabled: false,
+    autoEnabled: false,
+    observerEnabled: false,
+    homeoGain: 0,
+  };
+  const engine = new SimEngine();
+  engine.allocate(24, 24);
+  engine.applySettings(settings);
+  engine.seed("classic", 11);
+  injectUltraProbe(engine, 0);
+  for (let i = 0; i < 36; i++) engine.step();
+  assert.equal(engine.snapshot().ultraProbeCount, 1);
+  assert.ok(engine.ultraEpisodeEvents().length >= 1);
+
+  engine.seed("classic", 11);
+  const snap = engine.snapshot();
+  assert.equal(snap.ultraProbeCount, 0);
+  assert.equal(snap.ultraKeptCount, 0);
+  assert.equal(snap.ultraRevertedCount, 0);
+  assert.equal(snap.lastUltraOutcome, null);
+  assert.equal(snap.lastUltraGeneration, null);
+  assert.equal(snap.stableEpisodeLength, 0);
+  assert.equal(snap.lastUltraMinPop, null);
+  assert.equal(snap.lastUltraDeltaPop, null);
+  assert.equal(engine.ultraEpisodeEvents().length, 0);
+  assert.equal(snap.adaptations, 0);
+});
+
+test("same seed+settings with ultra on yield identical ultra event sequence", () => {
+  const settings: SimSettings = {
+    ...packSettings("ultrastable"),
+    disturbance: { id: "none", startGen: 0, duration: 0, amplitude: 0 },
+  };
+  const seedKey = 0x51adab1e;
+  const steps = 220;
+
+  function run() {
+    const engine = new SimEngine();
+    engine.allocate(32, 24);
+    engine.applySettings(settings);
+    engine.seed("ashby", seedKey);
+    for (let i = 0; i < steps; i++) engine.step();
+    const snap = engine.snapshot();
+    return {
+      events: engine.ultraEpisodeEvents().map((e) => ({
+        startGeneration: e.startGeneration,
+        resolveGeneration: e.resolveGeneration,
+        genomeBefore: e.genomeBefore,
+        genomeAfter: e.genomeAfter,
+        outcome: e.outcome,
+      })),
+      ultraProbeCount: snap.ultraProbeCount,
+      ultraKeptCount: snap.ultraKeptCount,
+      ultraRevertedCount: snap.ultraRevertedCount,
+      adaptations: snap.adaptations,
+      rule: snap.rule,
+      seedKey: snap.seedKey,
+    };
+  }
+
+  const a = run();
+  const b = run();
+  assert.deepEqual(a, b);
 });

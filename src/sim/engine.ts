@@ -16,7 +16,9 @@ import {
   type PaintMode,
   type PresetId,
   type SimSettings,
+  type UltraEpisodeEvent,
 } from "./types.ts";
+import { UltraEpisodeLog, createUltraEpisodeEvent } from "./ultra-episode-log.ts";
 
 /**
  * Deterministic schedule disturbance w(t).
@@ -64,6 +66,11 @@ interface Probe {
   baseline: number;
   acc: number;
   samples: number;
+  startGeneration: number;
+  genomeBefore: string;
+  genomeAfterMutation: string;
+  popAtStart: number;
+  minPop: number;
 }
 
 interface Well {
@@ -147,6 +154,7 @@ export class SimEngine {
   private freezeStreak = 0;
   private collapseStreak = 0;
   private probe: Probe | null = null;
+  private ultraLog = new UltraEpisodeLog();
   private popHistory: number[] = [];
   private viaHistory: number[] = [];
   private lastPop = 0;
@@ -271,6 +279,7 @@ export class SimEngine {
     this.freezeStreak = 0;
     this.collapseStreak = 0;
     this.probe = null;
+    this.ultraLog.reset();
     this.genome = classicGenome();
     this.setpoint = this.settings.setpoint;
     this.popHistory = [];
@@ -688,6 +697,8 @@ export class SimEngine {
       this.runMetabolism(meanHeat, density);
     }
 
+    let ultraResolve: Probe | null = null;
+    let ultraKept = false;
     if (this.probe) {
       this.probe.remaining--;
       this.probe.acc += via;
@@ -697,12 +708,14 @@ export class SimEngine {
         const mean = this.probe.acc / Math.max(1, this.probe.samples);
         if (mean + 0.02 >= this.probe.baseline) {
           this.adaptations++;
+          ultraKept = true;
           this.note("ultrastability", true, `kept ${genomeToString(this.genome)}`);
           this.stampPulse(Math.floor(cols / 2), Math.floor(rows / 2), "ultrastability", 1.2);
         } else {
           this.genome = this.probe.previous;
           this.note("ultrastability", true, "reverted genome");
         }
+        ultraResolve = this.probe;
         this.probe = null;
       }
     }
@@ -722,6 +735,12 @@ export class SimEngine {
     if (this.popHistory.length > HISTORY) {
       this.popHistory.shift();
       this.viaHistory.shift();
+    }
+    if (this.probe) {
+      this.probe.minPop = Math.min(this.probe.minPop, this.lastPop);
+    }
+    if (ultraResolve) {
+      this.finalizeUltraEpisode(ultraResolve, ultraKept);
     }
     this.observeViableRegion(density);
 
@@ -783,18 +802,50 @@ export class SimEngine {
     if (this.probe) return;
     const stuck = this.freezeStreak > 28 || this.collapseStreak > 18 || stab > 0.92;
     if (!stuck) return;
+    const genomeBefore = genomeToString(this.genome);
+    const previous = cloneGenome(this.genome);
+    this.genome = mutateGenome(this.genome, () => this.rand());
     this.probe = {
-      previous: cloneGenome(this.genome),
+      previous,
       remaining: TEST_WINDOW,
       baseline: via,
       acc: 0,
       samples: 0,
+      startGeneration: this.generation,
+      genomeBefore,
+      genomeAfterMutation: genomeToString(this.genome),
+      popAtStart: this.lastPop,
+      minPop: this.lastPop,
     };
-    this.genome = mutateGenome(this.genome, () => this.rand());
     this.freezeStreak = 0;
     this.collapseStreak = 0;
     this.note("ultrastability", true, `probe ${genomeToString(this.genome)}`);
     this.stampPulse(Math.floor(this.cols / 2), Math.floor(this.rows / 2), "ultrastability", 1.1);
+  }
+
+  private finalizeUltraEpisode(probe: Probe, kept: boolean): void {
+    const mean = probe.acc / Math.max(1, probe.samples);
+    const minPop = Math.min(probe.minPop, this.lastPop);
+    const genomeAfter = kept ? probe.genomeAfterMutation : probe.genomeBefore;
+    this.ultraLog.append(
+      createUltraEpisodeEvent({
+        startGeneration: probe.startGeneration,
+        resolveGeneration: this.generation - 1,
+        genomeBefore: probe.genomeBefore,
+        genomeAfter,
+        outcome: kept ? "kept" : "reverted",
+        baselineVia: probe.baseline,
+        probeMeanVia: mean,
+        popAtStart: probe.popAtStart,
+        minPopDuringProbe: minPop,
+        popAtEnd: this.lastPop,
+      }),
+    );
+  }
+
+  /** Append-only ultra episode log (capped); for tests and future Research export. */
+  ultraEpisodeEvents(): readonly UltraEpisodeEvent[] {
+    return this.ultraLog.list();
   }
 
   private runAutopoiesis(meanTenure: number, pop: number): void {
@@ -926,6 +977,7 @@ export class SimEngine {
       rule: genomeToString(this.genome),
       adaptations: this.adaptations,
       probing: this.probe !== null,
+      ...this.ultraLog.aggregates(this.generation),
       seedKey: this.seedKey,
       loops,
       popHistory: this.popHistory.slice(),

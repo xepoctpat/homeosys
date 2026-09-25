@@ -74,6 +74,28 @@ export const PROVISIONAL_SCHEDULE: DisturbanceSchedule = {
   amplitude: 0.55,
 };
 
+export type UltraEpisodeOutcome = "kept" | "reverted";
+
+/**
+ * One ultrastability probe episode.
+ * startGeneration: generation at probe start (genome mutated), before that step's increment.
+ * resolveGeneration: generation at probe resolve (kept/reverted), before that step's increment.
+ * genomeBefore / genomeAfter: genomeToString forms; after keep = candidate, after revert = restored previous.
+ * Failed probe (mean+0.02 < baseline) ⇒ outcome "reverted".
+ */
+export interface UltraEpisodeEvent {
+  startGeneration: number;
+  resolveGeneration: number;
+  genomeBefore: string;
+  genomeAfter: string;
+  outcome: UltraEpisodeOutcome;
+  baselineVia: number;
+  probeMeanVia: number;
+  popAtStart: number;
+  minPopDuringProbe: number;
+  popAtEnd: number;
+}
+
 export interface Metrics {
   generation: number;
   population: number;
@@ -88,6 +110,22 @@ export interface Metrics {
   rule: string;
   adaptations: number;
   probing: boolean;
+  /** Resolved ultrastability probe episodes since seed (capped log length). */
+  ultraProbeCount: number;
+  ultraKeptCount: number;
+  ultraRevertedCount: number;
+  lastUltraOutcome: UltraEpisodeOutcome | null;
+  /** resolveGeneration of the most recent ultra episode; null if none. */
+  lastUltraGeneration: number | null;
+  /**
+   * Generations since last probe resolution (kept or reverted).
+   * If none since seed, equals current generation.
+   */
+  stableEpisodeLength: number;
+  /** Min population during most recent resolved probe; null if none. */
+  lastUltraMinPop: number | null;
+  /** popAtEnd − popAtStart for most recent resolved probe; null if none. */
+  lastUltraDeltaPop: number | null;
   seedKey: number;
   loops: LoopFlag[];
   popHistory: number[];
