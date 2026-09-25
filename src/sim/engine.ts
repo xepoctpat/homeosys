@@ -13,6 +13,7 @@ import {
   type LoopFlag,
   type LoopId,
   type Metrics,
+  type OrganizationMode,
   type PaintMode,
   type PresetId,
   type SimSettings,
@@ -51,6 +52,14 @@ export function computeDisturbanceW(t: number, schedule: DisturbanceSchedule): n
 const TEST_WINDOW = 36;
 const HISTORY = 96;
 const WELL_COUNT = 5;
+/** Fixed tile edge (cells) for Local/Coordinated partitions — provisional lab default. */
+const PARTITION_TILE = 12;
+/**
+ * Coordinated coupling weight α (provisional).
+ * appliedErr = (1 − α) · localErr + α · mean(4-neighbor localErr).
+ * Actuation stays inside the partition; only the error signal couples.
+ */
+const COORD_COUPLING_ALPHA = 0.3;
 
 interface Pulse {
   x: number;
@@ -176,6 +185,17 @@ export class SimEngine {
   private lastInK = false;
   /** Running sum of |density − setpoint| for meanAbsDensityError. */
   private absDensityErrorSum = 0;
+  /** Running sum of cells planted+culled by homeostasis (for interventionRate). */
+  private interventionCellsSum = 0;
+  /**
+   * Running sum of (partitions with nonzero neighbor coupling) / partitionCount
+   * each generation (for coordinationBandwidthProxy).
+   */
+  private couplingActiveFractionSum = 0;
+  /** Per-partition integral state for Local/Coordinated modes. */
+  private partitionIntegrals = new Float32Array(0);
+  private partitionCols = 0;
+  private partitionRows = 0;
   /** Last computed schedule disturbance w(t). */
   private lastW = 0;
   private measureCount = 0;
@@ -278,6 +298,8 @@ export class SimEngine {
     this.generation = 0;
     this.adaptations = 0;
     this.integral = 0;
+    this.ensurePartitionLayout();
+    this.partitionIntegrals.fill(0);
     this.freezeStreak = 0;
     this.collapseStreak = 0;
     this.probe = null;
@@ -777,6 +799,16 @@ export class SimEngine {
   }
 
   private runHomeostasis(err: number, density: number, gain: number): void {
+    const org: OrganizationMode = this.settings.organizationMode ?? "Central";
+    if (org === "Central") {
+      this.runHomeostasisCentral(err, density, gain);
+      return;
+    }
+    this.runHomeostasisPartitioned(gain, org === "Coordinated");
+  }
+
+  /** Legacy single-global actuation (Central organizationMode). */
+  private runHomeostasisCentral(err: number, density: number, gain: number): void {
     // ViabilityBand: decay integral and idle while inside the soft K band.
     if (this.settings.controllerMode === "ViabilityBand" && Math.abs(err) < 1e-9) {
       this.integral *= 0.85;
@@ -784,6 +816,7 @@ export class SimEngine {
     }
     this.integral = Math.max(-0.4, Math.min(0.4, this.integral + err * 0.02));
     const u = gain * (err * 1.4 + this.integral * 0.6);
+    let touched = 0;
     if (u > 0.01) {
       const seeds = Math.min(28, Math.floor(u * 18) + (density < 0.01 ? 8 : 0));
       let planted = 0;
@@ -792,6 +825,7 @@ export class SimEngine {
         const y = Math.floor(this.rand() * this.rows);
         planted += this.stampCluster(x, y, 1 + Math.floor(this.rand() * 2));
       }
+      touched += planted;
       if (planted > 0) {
         this.note("homeostasis", true, `seeded ${planted}`);
         this.stampPulse(
@@ -810,8 +844,194 @@ export class SimEngine {
           killed++;
         }
       }
+      touched += killed;
       if (killed > 0) this.note("homeostasis", true, `culled ${killed}`);
     }
+    this.interventionCellsSum += touched;
+  }
+
+  /**
+   * Local / Coordinated partition actuation.
+   *
+   * Partitions are fixed PARTITION_TILE×PARTITION_TILE tiles (provisional).
+   * Each tile senses its own density, forms localErr via densityControlError,
+   * and seeds/culls only inside its bounds (no wrap across tiles).
+   *
+   * Coordinated coupling rule (scaffolding — not a VSM claim):
+   *   appliedErr_i = (1 − α) · localErr_i + α · mean(localErr of 4-adjacent tiles)
+   * with α = COORD_COUPLING_ALPHA (0.3). Neighbor tiles on opposite edges wrap
+   * in partition index space. Actuation remains confined to tile i; only the
+   * error signal couples. Local mode uses α = 0 (no coupling).
+   */
+  private runHomeostasisPartitioned(gain: number, coordinated: boolean): void {
+    this.ensurePartitionLayout();
+    const { partitionCols: px, partitionRows: py } = this;
+    const partitionCount = px * py;
+    if (partitionCount === 0) return;
+
+    const localErrs = new Float32Array(partitionCount);
+    const densities = new Float32Array(partitionCount);
+
+    for (let ty = 0; ty < py; ty++) {
+      for (let tx = 0; tx < px; tx++) {
+        const p = ty * px + tx;
+        const { x0, y0, x1, y1 } = this.partitionBounds(tx, ty);
+        const dens = this.partitionDensity(x0, y0, x1, y1);
+        densities[p] = dens;
+        localErrs[p] = this.densityControlError(dens);
+      }
+    }
+
+    let couplingActive = 0;
+    let totalTouched = 0;
+    let notePlanted = 0;
+    let noteCulled = 0;
+
+    for (let ty = 0; ty < py; ty++) {
+      for (let tx = 0; tx < px; tx++) {
+        const p = ty * px + tx;
+        let err = localErrs[p];
+        if (coordinated) {
+          // 4-neighbor mean in partition index space (wrap).
+          const nErr =
+            (localErrs[ty * px + ((tx - 1 + px) % px)] +
+              localErrs[ty * px + ((tx + 1) % px)] +
+              localErrs[((ty - 1 + py) % py) * px + tx] +
+              localErrs[((ty + 1) % py) * px + tx]) /
+            4;
+          if (Math.abs(nErr) > 1e-9) couplingActive++;
+          err = (1 - COORD_COUPLING_ALPHA) * err + COORD_COUPLING_ALPHA * nErr;
+        }
+
+        if (this.settings.controllerMode === "ViabilityBand" && Math.abs(err) < 1e-9) {
+          this.partitionIntegrals[p] *= 0.85;
+          continue;
+        }
+
+        this.partitionIntegrals[p] = Math.max(
+          -0.4,
+          Math.min(0.4, this.partitionIntegrals[p] + err * 0.02),
+        );
+        const u = gain * (err * 1.4 + this.partitionIntegrals[p] * 0.6);
+        const dens = densities[p];
+        const { x0, y0, x1, y1 } = this.partitionBounds(tx, ty);
+        const tileN = Math.max(1, (x1 - x0) * (y1 - y0));
+
+        if (u > 0.01) {
+          // Scale seed budget by tile share of the field (keeps total effort ~Central).
+          const share = tileN / Math.max(1, this.alive.length);
+          const seeds = Math.min(
+            8,
+            Math.floor(u * 18 * share * partitionCount) + (dens < 0.01 ? 2 : 0),
+          );
+          let planted = 0;
+          for (let s = 0; s < seeds; s++) {
+            const x = x0 + Math.floor(this.rand() * (x1 - x0));
+            const y = y0 + Math.floor(this.rand() * (y1 - y0));
+            planted += this.stampClusterInBounds(x, y, 1 + Math.floor(this.rand() * 2), x0, y0, x1, y1);
+          }
+          totalTouched += planted;
+          notePlanted += planted;
+        } else if (u < -0.02 && this.shouldCull(dens)) {
+          const cull = Math.min(20, Math.floor(-u * tileN * 0.01));
+          let killed = 0;
+          for (let s = 0; s < cull; s++) {
+            const x = x0 + Math.floor(this.rand() * (x1 - x0));
+            const y = y0 + Math.floor(this.rand() * (y1 - y0));
+            const i = this.idx(x, y);
+            if (this.alive[i] && this.kind[i] === 0 && this.tenure[i] < 8) {
+              this.alive[i] = 0;
+              killed++;
+            }
+          }
+          totalTouched += killed;
+          noteCulled += killed;
+        }
+      }
+    }
+
+    this.interventionCellsSum += totalTouched;
+    if (coordinated) {
+      this.couplingActiveFractionSum += couplingActive / partitionCount;
+    }
+    if (notePlanted > 0 || noteCulled > 0) {
+      const parts: string[] = [];
+      if (notePlanted > 0) parts.push(`seeded ${notePlanted}`);
+      if (noteCulled > 0) parts.push(`culled ${noteCulled}`);
+      this.note(
+        "homeostasis",
+        true,
+        `${coordinated ? "coord" : "local"} ${parts.join(", ")}`,
+      );
+    }
+  }
+
+  private ensurePartitionLayout(): void {
+    const px = Math.max(1, Math.ceil(this.cols / PARTITION_TILE));
+    const py = Math.max(1, Math.ceil(this.rows / PARTITION_TILE));
+    if (px === this.partitionCols && py === this.partitionRows && this.partitionIntegrals.length === px * py) {
+      return;
+    }
+    this.partitionCols = px;
+    this.partitionRows = py;
+    this.partitionIntegrals = new Float32Array(px * py);
+  }
+
+  private partitionBounds(tx: number, ty: number): {
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+  } {
+    const x0 = tx * PARTITION_TILE;
+    const y0 = ty * PARTITION_TILE;
+    return {
+      x0,
+      y0,
+      x1: Math.min(this.cols, x0 + PARTITION_TILE),
+      y1: Math.min(this.rows, y0 + PARTITION_TILE),
+    };
+  }
+
+  private partitionDensity(x0: number, y0: number, x1: number, y1: number): number {
+    let pop = 0;
+    const n = (x1 - x0) * (y1 - y0);
+    if (n <= 0) return 0;
+    for (let y = y0; y < y1; y++) {
+      const row = y * this.cols;
+      for (let x = x0; x < x1; x++) pop += this.alive[row + x];
+    }
+    return pop / n;
+  }
+
+  /** Plant inside a partition rectangle (no wrap across tile boundaries). */
+  private stampClusterInBounds(
+    cx: number,
+    cy: number,
+    r: number,
+    x0: number,
+    y0: number,
+    x1: number,
+    y1: number,
+  ): number {
+    let planted = 0;
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (dx * dx + dy * dy > r * r) continue;
+        if (this.rand() < 0.35) continue;
+        const x = cx + dx;
+        const y = cy + dy;
+        if (x < x0 || x >= x1 || y < y0 || y >= y1) continue;
+        const i = this.idx(x, y);
+        this.energy[i] = Math.min(1, this.energy[i] + 0.5);
+        if (this.alive[i] === 0) {
+          this.alive[i] = 1;
+          this.shown[i] = Math.max(this.shown[i], 0.7);
+          planted++;
+        }
+      }
+    }
+    return planted;
   }
 
   /** Cull gate differs by mode: setpoint overshoot vs density above provisional K max. */
@@ -944,6 +1164,8 @@ export class SimEngine {
     this.prevInK = null;
     this.lastInK = false;
     this.absDensityErrorSum = 0;
+    this.interventionCellsSum = 0;
+    this.couplingActiveFractionSum = 0;
     this.lastW = 0;
     this.measureCount = 0;
     this.shouldMeasure = false;
@@ -1034,6 +1256,13 @@ export class SimEngine {
       controllerMode: this.settings.controllerMode ?? "SetpointError",
       meanAbsDensityError:
         this.stepsObserved > 0 ? this.absDensityErrorSum / this.stepsObserved : 0,
+      organizationMode: this.settings.organizationMode ?? "Central",
+      interventionRate:
+        this.stepsObserved > 0 && this.alive.length > 0
+          ? this.interventionCellsSum / (this.stepsObserved * this.alive.length)
+          : 0,
+      coordinationBandwidthProxy:
+        this.stepsObserved > 0 ? this.couplingActiveFractionSum / this.stepsObserved : 0,
       scheduleId: this.settings.disturbance.id,
       w: this.lastW,
       scheduleStartGen: this.settings.disturbance.startGen,

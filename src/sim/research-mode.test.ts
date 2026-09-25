@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   abControllerProtocols,
+  abcOrganizationProtocols,
+  armAbcOrganizationSettings,
+  nextOrganizationMode,
   captureProtocol,
   clampRepeats,
   exportCsv,
@@ -29,6 +32,7 @@ function baseProtocol(over: Partial<ResearchProtocol> = {}): ResearchProtocol {
     worldPreset: "classic",
     repeats: 3,
     controllerMode: "SetpointError",
+    organizationMode: "Central",
     ...over,
   };
 }
@@ -327,4 +331,73 @@ test("abControllerProtocols differ only in controllerMode", () => {
   assert.deepEqual(setpoint.schedule, viability.schedule);
   assert.equal(setpoint.generationLimit, viability.generationLimit);
   assert.equal(setpoint.worldPreset, viability.worldPreset);
+});
+
+test("validateProtocol / captureProtocol include organizationMode", () => {
+  const result = validateProtocol(baseProtocol({ organizationMode: "Local" }));
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.protocol.organizationMode, "Local");
+
+  const settings: SimSettings = {
+    ...DEFAULT_SETTINGS,
+    organizationMode: "Coordinated",
+    disturbance: { id: "pulse", startGen: 10, duration: 5, amplitude: 0.4 },
+    generationLimit: 40,
+  };
+  const captured = captureProtocol({
+    seedKey: 7,
+    studyCondition: "homeostatic",
+    settings,
+    cols: 32,
+    rows: 24,
+    worldPreset: "classic",
+    repeats: 2,
+  });
+  assert.equal(captured.ok, true);
+  if (!captured.ok) return;
+  assert.equal(captured.protocol.organizationMode, "Coordinated");
+  const built = settingsFromProtocol(captured.protocol);
+  assert.equal(built.organizationMode, "Coordinated");
+});
+
+test("export CSV/JSONL includes organizationMode and interventionRate", () => {
+  const protocol = baseProtocol({
+    repeats: 1,
+    generationLimit: 15,
+    measurementInterval: 5,
+    organizationMode: "Local",
+  });
+  const results = runBatch(protocol);
+  const csv = exportCsv(results);
+  assert.ok(csv.includes("organizationMode"));
+  assert.ok(csv.includes("interventionRate"));
+  assert.ok(csv.includes("coordinationBandwidthProxy"));
+  assert.ok(csv.includes("Local"));
+  const row = JSON.parse(exportJsonl(results).trim().split("\n")[0]);
+  assert.equal(row.organizationMode, "Local");
+  assert.ok(typeof row.interventionRate === "number");
+  assert.ok(typeof row.coordinationBandwidthProxy === "number");
+  assert.ok(typeof row.meanAbsDensityError === "number");
+  assert.ok(typeof row.controllerMode === "string");
+});
+
+test("abcOrganizationProtocols differ only in organizationMode", () => {
+  const { central, local, coordinated } = abcOrganizationProtocols(
+    baseProtocol({ organizationMode: "Central" }),
+  );
+  assert.equal(central.organizationMode, "Central");
+  assert.equal(local.organizationMode, "Local");
+  assert.equal(coordinated.organizationMode, "Coordinated");
+  assert.equal(central.seedKey, local.seedKey);
+  assert.equal(central.controllerMode, coordinated.controllerMode);
+  assert.deepEqual(central.schedule, local.schedule);
+  assert.equal(central.generationLimit, coordinated.generationLimit);
+  assert.equal(nextOrganizationMode("Central"), "Local");
+  assert.equal(nextOrganizationMode("Local"), "Coordinated");
+  assert.equal(nextOrganizationMode("Coordinated"), "Central");
+  const armed = armAbcOrganizationSettings("Local");
+  assert.equal(armed.organizationMode, "Local");
+  assert.equal(armed.generationLimit, 200);
+  assert.equal(armed.disturbance.id, "pulse");
 });

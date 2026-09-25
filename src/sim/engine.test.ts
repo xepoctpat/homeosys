@@ -818,3 +818,79 @@ test("ViabilityBand idles while density is deep inside provisional K", () => {
   assert.equal(snap.controllerMode, "ViabilityBand");
   assert.ok(snap.densityMin === 0.02 && snap.densityMax === 0.4);
 });
+
+test("organizationMode Central vs Local vs Coordinated diverge under fixed seed + schedule + controllerMode", () => {
+  const seedKey = 0x4d50002;
+  const schedule = {
+    id: "pulse" as const,
+    startGen: 20,
+    duration: 25,
+    amplitude: 0.7,
+  };
+  const base = {
+    ...DEFAULT_SETTINGS,
+    ...STUDY_CONDITIONS.find((c) => c.id === "homeostatic")!.settings,
+    disturbance: schedule,
+    generationLimit: 80,
+    measurementInterval: 0,
+    autoSetpoint: false,
+    setpoint: 0.16,
+    densityMin: 0.02,
+    densityMax: 0.4,
+    observerEnabled: false,
+    varietyEnabled: false,
+    ultraEnabled: false,
+    controllerMode: "SetpointError" as const,
+  };
+
+  function run(organizationMode: "Central" | "Local" | "Coordinated") {
+    const engine = new SimEngine();
+    engine.allocate(48, 36);
+    engine.applySettings({ ...base, organizationMode });
+    engine.seed("classic", seedKey);
+    while (!engine.limitReached()) engine.step();
+    return engine.snapshot();
+  }
+
+  const central = run("Central");
+  const local = run("Local");
+  const coordinated = run("Coordinated");
+
+  assert.equal(central.organizationMode, "Central");
+  assert.equal(local.organizationMode, "Local");
+  assert.equal(coordinated.organizationMode, "Coordinated");
+  assert.equal(central.controllerMode, "SetpointError");
+  assert.equal(local.controllerMode, coordinated.controllerMode);
+  assert.equal(central.seedKey, local.seedKey);
+  assert.equal(central.scheduleId, "pulse");
+  assert.equal(central.generation, local.generation);
+  assert.equal(local.generation, coordinated.generation);
+
+  const sameCL =
+    central.density === local.density &&
+    central.interventionRate === local.interventionRate &&
+    central.meanAbsDensityError === local.meanAbsDensityError &&
+    central.population === local.population;
+  assert.equal(sameCL, false, "expected Central and Local to diverge");
+
+  const sameLC =
+    local.density === coordinated.density &&
+    local.interventionRate === coordinated.interventionRate &&
+    local.meanAbsDensityError === coordinated.meanAbsDensityError &&
+    local.population === coordinated.population;
+  assert.equal(sameLC, false, "expected Local and Coordinated to diverge");
+
+  // Central/Local report zero coordination bandwidth; Coordinated should be > 0 under this schedule.
+  assert.equal(central.coordinationBandwidthProxy, 0);
+  assert.equal(local.coordinationBandwidthProxy, 0);
+  assert.ok(coordinated.coordinationBandwidthProxy > 0);
+
+  // Shared observational columns remain finite.
+  for (const snap of [central, local, coordinated]) {
+    assert.ok(typeof snap.interventionRate === "number");
+    assert.ok(Number.isFinite(snap.timeInKFraction));
+    assert.ok(Number.isFinite(snap.cumulativeDistanceOutsideK));
+    assert.ok(Number.isFinite(snap.meanAbsDensityError));
+    assert.ok(typeof snap.controllerMode === "string");
+  }
+});

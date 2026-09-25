@@ -81,6 +81,46 @@ export function normalizeControllerMode(raw: unknown): ControllerMode {
 }
 
 /**
+ * Organization / autonomy scaffolding for homeostasis actuation (M5).
+ * Eng scaffolding only — VSM remains a hypothesis; not a claim of hierarchy as organization.
+ * Central: single global actuation (legacy homeostat-style).
+ * Local: neighborhood/partition actuation with no inter-partition coupling.
+ * Coordinated: local actuation + limited neighbor error coupling (see engine comment + UI blurb).
+ */
+export type OrganizationMode = "Central" | "Local" | "Coordinated";
+
+export const ORGANIZATION_MODES: {
+  id: OrganizationMode;
+  label: string;
+  blurb: string;
+}[] = [
+  {
+    id: "Central",
+    label: "Central",
+    blurb: "Single global density error; actuate anywhere on the field (legacy homeostat-style).",
+  },
+  {
+    id: "Local",
+    label: "Local",
+    blurb: "Partition-local density sensing and actuation; partitions do not couple.",
+  },
+  {
+    id: "Coordinated",
+    label: "Coordinated",
+    blurb:
+      "Partition-local actuation with limited coupling: applied error mixes local and mean neighbor errors (α≈0.3). Not a VSM claim.",
+  },
+];
+
+const ORGANIZATION_MODE_IDS: OrganizationMode[] = ["Central", "Local", "Coordinated"];
+
+export function normalizeOrganizationMode(raw: unknown): OrganizationMode {
+  return ORGANIZATION_MODE_IDS.includes(raw as OrganizationMode)
+    ? (raw as OrganizationMode)
+    : "Central";
+}
+
+/**
  * Provisional DisturbanceSchedule knobs — lab defaults, not calibrated.
  * w(t) is computed from these params over generation t; study packs must not redefine them.
  */
@@ -203,6 +243,18 @@ export interface Metrics {
   controllerMode: ControllerMode;
   /** Mean |density − setpoint| over observed steps (setpoint-error metric for A/B). */
   meanAbsDensityError: number;
+  /** Organization / autonomy mode for homeostasis actuation (M5 scaffolding). */
+  organizationMode: OrganizationMode;
+  /**
+   * Mean fraction of cells touched by homeostasis per generation
+   * (planted + culled) / (stepsObserved · n). Observational intervention rate.
+   */
+  interventionRate: number;
+  /**
+   * Cheap coordination bandwidth proxy: mean fraction of partitions that received
+   * a nonzero neighbor coupling term per generation. 0 for Central/Local.
+   */
+  coordinationBandwidthProxy: number;
   /** Active disturbance schedule id (replay note). */
   scheduleId: DisturbanceScheduleId;
   /** Current w(t) from the schedule at this generation. */
@@ -238,6 +290,11 @@ export interface SimSettings {
    * (ResearchMode lock / A/B presets own the A/B pairing).
    */
   controllerMode: ControllerMode;
+  /**
+   * Organization / autonomy mode for homeostasis actuation (M5). Loop-layer only —
+   * ResearchMode lock / A/B/C presets own the three-way pairing. Not a VSM claim.
+   */
+  organizationMode: OrganizationMode;
   ultraEnabled: boolean;
   varietyEnabled: boolean;
   autoEnabled: boolean;
@@ -280,6 +337,7 @@ export const DEFAULT_SETTINGS: SimSettings = {
   autoSetpoint: true,
   setpoint: 0.16,
   controllerMode: "SetpointError",
+  organizationMode: "Central",
   ultraEnabled: true,
   varietyEnabled: true,
   autoEnabled: true,
@@ -299,6 +357,9 @@ export function normalizeSimSettings(raw: unknown): SimSettings {
     ...r,
     disturbance: normalizeDisturbance(r.disturbance ?? DEFAULT_SETTINGS.disturbance),
     controllerMode: normalizeControllerMode(r.controllerMode ?? DEFAULT_SETTINGS.controllerMode),
+    organizationMode: normalizeOrganizationMode(
+      r.organizationMode ?? DEFAULT_SETTINGS.organizationMode,
+    ),
     densityMin: finiteNumber(r.densityMin, DEFAULT_SETTINGS.densityMin),
     densityMax: finiteNumber(r.densityMax, DEFAULT_SETTINGS.densityMax),
     generationLimit: Math.max(

@@ -4,10 +4,12 @@ import {
   STUDY_CONDITIONS,
   normalizeControllerMode,
   normalizeDisturbance,
+  normalizeOrganizationMode,
   normalizeSimSettings,
   type ControllerMode,
   type DisturbanceSchedule,
   type Metrics,
+  type OrganizationMode,
   type PresetId,
   type SimSettings,
   type StudyConditionId,
@@ -39,6 +41,8 @@ export interface ResearchProtocol {
   repeats: number;
   /** Fast homeostasis policy mode (M4 A/B factor). */
   controllerMode: ControllerMode;
+  /** Organization / autonomy mode (M5 A/B/C factor). Scaffolding — not a VSM claim. */
+  organizationMode: OrganizationMode;
 }
 
 /** Per-generation sample at a measurement tick (optional, cheap JSONL). */
@@ -50,6 +54,8 @@ export interface ResearchSeriesPoint {
   cumulativeDistanceOutsideK: number;
   recoveries: number;
   meanAbsDensityError: number;
+  interventionRate: number;
+  coordinationBandwidthProxy: number;
   w: number;
   rule: string;
   ultraProbeCount: number;
@@ -63,6 +69,7 @@ export interface ResearchRunSummary {
   seedKey: number;
   studyCondition: StudyConditionId;
   controllerMode: ControllerMode;
+  organizationMode: OrganizationMode;
   scheduleId: DisturbanceSchedule["id"];
   scheduleStartGen: number;
   scheduleDuration: number;
@@ -79,6 +86,8 @@ export interface ResearchRunSummary {
   cumulativeDistanceOutsideK: number;
   recoveries: number;
   meanAbsDensityError: number;
+  interventionRate: number;
+  coordinationBandwidthProxy: number;
   ultraProbeCount: number;
   ultraKeptCount: number;
   ultraRevertedCount: number;
@@ -107,6 +116,7 @@ export function settingsFromProtocol(protocol: ResearchProtocol): SimSettings {
     generationLimit: protocol.generationLimit,
     measurementInterval: protocol.measurementInterval,
     controllerMode: protocol.controllerMode,
+    organizationMode: protocol.organizationMode,
   });
 }
 
@@ -162,6 +172,7 @@ export function validateProtocol(
   const repeats = clampRepeats(Number(input.repeats ?? RESEARCH_DEFAULT_REPEATS));
 
   const controllerMode = normalizeControllerMode(input.controllerMode);
+  const organizationMode = normalizeOrganizationMode(input.organizationMode);
 
   return {
     ok: true,
@@ -176,6 +187,7 @@ export function validateProtocol(
       worldPreset,
       repeats,
       controllerMode,
+      organizationMode,
     },
   };
 }
@@ -201,6 +213,7 @@ export function captureProtocol(args: {
     worldPreset: args.worldPreset,
     repeats: args.repeats,
     controllerMode: args.settings.controllerMode,
+    organizationMode: args.settings.organizationMode,
   });
 }
 
@@ -213,6 +226,8 @@ function seriesPointFromMetrics(m: Metrics): ResearchSeriesPoint {
     cumulativeDistanceOutsideK: m.cumulativeDistanceOutsideK,
     recoveries: m.recoveries,
     meanAbsDensityError: m.meanAbsDensityError,
+    interventionRate: m.interventionRate,
+    coordinationBandwidthProxy: m.coordinationBandwidthProxy,
     w: m.w,
     rule: m.rule,
     ultraProbeCount: m.ultraProbeCount,
@@ -232,6 +247,7 @@ export function summarizeRun(
     seedKey: protocol.seedKey,
     studyCondition: protocol.studyCondition,
     controllerMode: protocol.controllerMode,
+    organizationMode: protocol.organizationMode,
     scheduleId: protocol.schedule.id,
     scheduleStartGen: protocol.schedule.startGen,
     scheduleDuration: protocol.schedule.duration,
@@ -248,6 +264,8 @@ export function summarizeRun(
     cumulativeDistanceOutsideK: metrics.cumulativeDistanceOutsideK,
     recoveries: metrics.recoveries,
     meanAbsDensityError: metrics.meanAbsDensityError,
+    interventionRate: metrics.interventionRate,
+    coordinationBandwidthProxy: metrics.coordinationBandwidthProxy,
     ultraProbeCount: metrics.ultraProbeCount,
     ultraKeptCount: metrics.ultraKeptCount,
     ultraRevertedCount: metrics.ultraRevertedCount,
@@ -351,6 +369,7 @@ export const RESEARCH_CSV_COLUMNS: (keyof ResearchRunSummary)[] = [
   "seedKey",
   "studyCondition",
   "controllerMode",
+  "organizationMode",
   "scheduleId",
   "scheduleStartGen",
   "scheduleDuration",
@@ -367,6 +386,8 @@ export const RESEARCH_CSV_COLUMNS: (keyof ResearchRunSummary)[] = [
   "cumulativeDistanceOutsideK",
   "recoveries",
   "meanAbsDensityError",
+  "interventionRate",
+  "coordinationBandwidthProxy",
   "ultraProbeCount",
   "ultraKeptCount",
   "ultraRevertedCount",
@@ -398,7 +419,7 @@ export function exportCsv(results: ResearchRunSummary[]): string {
 export function researchExportBasename(protocol: ResearchProtocol, timestamp = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   const ts = `${timestamp.getFullYear()}${pad(timestamp.getMonth() + 1)}${pad(timestamp.getDate())}-${pad(timestamp.getHours())}${pad(timestamp.getMinutes())}${pad(timestamp.getSeconds())}`;
-  return `homeosys-research-${protocol.studyCondition}-${protocol.controllerMode}-${protocol.schedule.id}-${ts}`;
+  return `homeosys-research-${protocol.studyCondition}-${protocol.controllerMode}-${protocol.organizationMode}-${protocol.schedule.id}-${ts}`;
 }
 
 /**
@@ -454,8 +475,9 @@ export const AB_CONTROLLER_GENERATION_LIMIT = 200;
 
 export const AB_CONTROLLER_COPY =
   "A/B: SetpointError vs ViabilityBand — same seed, pulse@40/30 a=0.55, limit=200. " +
-  "Arm shared schedule → Lock → Run batch → Export. Unlock → Flip mode → Lock → Run → Export. " +
-  "Compare timeInKFraction, cumulativeDistanceOutsideK, recoveries, meanAbsDensityError. Observational only.";
+  "Arm shared schedule → Lock → Run batch → Export. Unlock → Arm B (or Flip) → Lock → Run → Export. " +
+  "Compare timeInKFraction, cumulativeDistanceOutsideK, recoveries, meanAbsDensityError. Observational only. " +
+  "Caveat: Unlock does not switch the arm — re-Arm B (or Flip) before Lock so the next batch is not still on Arm A.";
 
 /** Apply shared A/B world knobs + chosen mode (does not change study pack / seed). */
 export function armAbControllerSettings(
@@ -483,4 +505,56 @@ export function abControllerProtocols(
     controllerMode: "ViabilityBand",
   };
   return { setpoint, viability };
+}
+
+/**
+ * Shared A/B/C disturbance family for Central vs Local vs Coordinated (M5).
+ * Identical schedule / seed / generationLimit / controllerMode — only organizationMode flips.
+ * Provisional knobs; not calibrated. Scaffolding for later evidence — not scientific completion.
+ */
+export const ABC_ORGANIZATION_SCHEDULE: DisturbanceSchedule = {
+  id: "pulse",
+  startGen: 40,
+  duration: 30,
+  amplitude: 0.55,
+};
+
+/** Shared finite horizon for M5 A/B/C batches (must be > schedule.startGen). */
+export const ABC_ORGANIZATION_GENERATION_LIMIT = 200;
+
+export const ABC_ORGANIZATION_COPY =
+  "A/B/C: Central vs Local vs Coordinated — same seed, controllerMode, pulse@40/30 a=0.55, limit=200. " +
+  "Arm shared schedule → Lock → Run batch → Export. Unlock → Arm next (or Flip) → Lock → Run → Export. " +
+  "Compare timeInKFraction, cumulativeDistanceOutsideK, recoveries, meanAbsDensityError, interventionRate, " +
+  "coordinationBandwidthProxy. Observational scaffolding only — not a VSM or life claim. " +
+  "Caveat: Unlock does not switch the arm — re-Arm (or Flip) before Lock so the next batch is not still on the previous mode.";
+
+/** Apply shared A/B/C world knobs + chosen organization mode (does not change study pack / seed). */
+export function armAbcOrganizationSettings(
+  mode: OrganizationMode,
+): Pick<SimSettings, "organizationMode" | "disturbance" | "generationLimit"> {
+  return {
+    organizationMode: mode,
+    disturbance: { ...ABC_ORGANIZATION_SCHEDULE },
+    generationLimit: ABC_ORGANIZATION_GENERATION_LIMIT,
+  };
+}
+
+/** Build three protocols that differ only in organizationMode. */
+export function abcOrganizationProtocols(
+  base: Omit<ResearchProtocol, "organizationMode">,
+): { central: ResearchProtocol; local: ResearchProtocol; coordinated: ResearchProtocol } {
+  const shared = validateProtocol({ ...base, organizationMode: "Central" });
+  if (!shared.ok) throw new Error(shared.error);
+  const central: ResearchProtocol = { ...shared.protocol, organizationMode: "Central" };
+  const local: ResearchProtocol = { ...shared.protocol, organizationMode: "Local" };
+  const coordinated: ResearchProtocol = { ...shared.protocol, organizationMode: "Coordinated" };
+  return { central, local, coordinated };
+}
+
+/** Cycle Central → Local → Coordinated → Central. */
+export function nextOrganizationMode(mode: OrganizationMode): OrganizationMode {
+  if (mode === "Central") return "Local";
+  if (mode === "Local") return "Coordinated";
+  return "Central";
 }

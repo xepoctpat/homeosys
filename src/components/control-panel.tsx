@@ -20,6 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
   CONTROLLER_MODES,
+  ORGANIZATION_MODES,
   PRESETS,
   PROVISIONAL_SCHEDULE,
   normalizeDisturbance,
@@ -27,6 +28,7 @@ import {
   type ControllerMode,
   type DisturbanceScheduleId,
   type Metrics,
+  type OrganizationMode,
   type PaintMode,
   type PresetId,
   type SimSettings,
@@ -37,7 +39,11 @@ import { finiteOr, fixed } from "@/sim/metrics-format";
 import {
   AB_CONTROLLER_COPY,
   AB_CONTROLLER_GENERATION_LIMIT,
+  ABC_ORGANIZATION_COPY,
+  ABC_ORGANIZATION_GENERATION_LIMIT,
   armAbControllerSettings,
+  armAbcOrganizationSettings,
+  nextOrganizationMode,
   RESEARCH_DEFAULT_REPEATS,
   RESEARCH_REPEATS_MAX,
   RESEARCH_REPEATS_MIN,
@@ -789,6 +795,41 @@ export function ControlPanel(props: ControlPanelProps) {
                 })}
               </div>
             </div>
+            <div className="space-y-2">
+              <div className="text-sm text-fg">Organization mode</div>
+              <p className="text-xs leading-relaxed text-subtle">
+                Central: one global density error, actuate anywhere (legacy homeostat-style).
+                Local: partition-local sensing and actuation with no coupling between tiles.
+                Coordinated: local actuation plus limited coupling — applied error mixes local
+                and mean 4-neighbor errors (α≈0.3); seeds/culls stay inside each tile. Eng
+                scaffolding for hierarchy/autonomy comparison — not a VSM or life claim.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {ORGANIZATION_MODES.map((mode) => {
+                  const on = settings.organizationMode === mode.id;
+                  return (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      title={mode.blurb}
+                      disabled={protocolLocked}
+                      onClick={() => {
+                        if (protocolLocked) return;
+                        onSettings({ organizationMode: mode.id });
+                      }}
+                      className={cn(
+                        "rounded-full px-3 py-1.5 text-sm transition-colors duration-150",
+                        on ? "bg-accent text-accent-fg" : "bg-raised text-muted hover:text-fg",
+                        protocolLocked && "opacity-60",
+                      )}
+                      aria-pressed={on}
+                    >
+                      {mode.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <Row
               label="Correction strength"
               value={fixed(settings.homeoGain, 2)}
@@ -880,7 +921,8 @@ export function ControlPanel(props: ControlPanelProps) {
               {protocolLocked && researchProtocol ? (
                 <p className="font-mono text-xs leading-relaxed text-muted">
                   seed={researchProtocol.seedKey >>> 0} · {researchProtocol.studyCondition} ·{" "}
-                  {researchProtocol.controllerMode} · {researchProtocol.schedule.id}@
+                  {researchProtocol.controllerMode} · {researchProtocol.organizationMode} ·{" "}
+                  {researchProtocol.schedule.id}@
                   {researchProtocol.schedule.startGen}/{researchProtocol.schedule.duration}/a=
                   {researchProtocol.schedule.amplitude.toFixed(2)} · limit=
                   {researchProtocol.generationLimit} · measure=
@@ -958,10 +1000,63 @@ export function ControlPanel(props: ControlPanelProps) {
               <p className="font-mono text-[10px] leading-relaxed text-muted">
                 Current mode {settings.controllerMode} · shared limit{" "}
                 {AB_CONTROLLER_GENERATION_LIMIT}. Steps: Arm A → Lock → Run batch → Export →
-                Unlock → Arm B (or Flip) → Lock → Run → Export.
+                Unlock → Arm B (or Flip) → Lock → Run → Export. Caveat: Unlock does not
+                switch the arm — re-Arm B (or Flip) before Lock.
               </p>
             </div>
-            <Row
+                        <div className="space-y-3 rounded-lg border border-border bg-raised/40 px-3 py-3">
+              <div className="text-sm text-fg">A/B/C: Central vs Local vs Coordinated</div>
+              <p className="text-xs leading-relaxed text-subtle">{ABC_ORGANIZATION_COPY}</p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  disabled={protocolLocked || researchBatchRunning}
+                  onClick={() => {
+                    if (protocolLocked) return;
+                    onSettings(armAbcOrganizationSettings("Central"));
+                  }}
+                >
+                  Arm A (Central)
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={protocolLocked || researchBatchRunning}
+                  onClick={() => {
+                    if (protocolLocked) return;
+                    onSettings(armAbcOrganizationSettings("Local"));
+                  }}
+                >
+                  Arm B (Local)
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={protocolLocked || researchBatchRunning}
+                  onClick={() => {
+                    if (protocolLocked) return;
+                    onSettings(armAbcOrganizationSettings("Coordinated"));
+                  }}
+                >
+                  Arm C (Coordinated)
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={protocolLocked || researchBatchRunning}
+                  onClick={() => {
+                    if (protocolLocked) return;
+                    onSettings({ organizationMode: nextOrganizationMode(settings.organizationMode) });
+                  }}
+                >
+                  Flip organization only
+                </Button>
+              </div>
+              <p className="font-mono text-[10px] leading-relaxed text-muted">
+                Current organization {settings.organizationMode} · shared limit{" "}
+                {ABC_ORGANIZATION_GENERATION_LIMIT}. Steps: Arm A → Lock → Run batch → Export →
+                Unlock → Arm B/C (or Flip) → Lock → Run → Export. Caveat: Unlock does not switch
+                the arm — re-Arm before Lock. Scaffolding only — not scientific completion of M5.
+              </p>
+            </div>
+<Row
               label="Repeats (N)"
               value={String(researchRepeats)}
               hint={`Same locked seed and settings each run. Default ${RESEARCH_DEFAULT_REPEATS}; clamp ${RESEARCH_REPEATS_MIN}–${RESEARCH_REPEATS_MAX}.`}
